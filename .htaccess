@@ -1,0 +1,13 @@
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    RewriteRule ^public/?$ ./ [R=302,L]
+    RewriteRule ^public/(.*)$ $1 [R=302,L]
+
+    RewriteRule ^(css|js|images|storage|build|artfy-logo\.svg|favicon\.ico|robots\.txt)(/.*)?$ public/$1$2 [L]
+
+    RewriteRule ^index\.php - [L]
+    RewriteRule ^(.*)$ index.php/$1 [L,QSA]
+</IfModule>
