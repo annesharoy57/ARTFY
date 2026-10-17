@@ -37,13 +37,11 @@ class GalleryController extends Controller
         $maxPriceInput = $request->query('max_price', '');
         $sort = (string) $request->query('sort', 'latest');
 
-        // Accept only a valid, non-negative numeric budget.
         $maxPrice = is_numeric($maxPriceInput)
             && (float) $maxPriceInput >= 0
                 ? (float) $maxPriceInput
                 : null;
 
-        // Prevent arbitrary sorting values.
         $allowedSorts = [
             'latest',
             'oldest',
@@ -61,7 +59,6 @@ class GalleryController extends Controller
             $this->artworkCollection()
         );
 
-        // Apply every selected filter together.
         $artworks = array_values(array_filter(
             $artworks,
             function (array $artwork) use (
@@ -100,7 +97,6 @@ class GalleryController extends Controller
             }
         ));
 
-        // Sort the filtered collection.
         switch ($sort) {
             case 'oldest':
                 usort(
@@ -149,7 +145,6 @@ class GalleryController extends Controller
                 break;
         }
 
-        // Remove internal sorting metadata before rendering.
         foreach ($artworks as &$artwork) {
             unset($artwork['_created_at']);
         }
@@ -195,14 +190,12 @@ class GalleryController extends Controller
         $medium = $normalize($medium);
         $selected = $normalize($selected);
 
-        // Oil painting may be stored as category=Painting, medium=Oil.
         if ($selected === 'oil painting') {
             return $medium === 'oil'
                 || $medium === 'oil painting'
-                || ($category === 'oil painting');
+                || $category === 'oil painting';
         }
 
-        // Digital painting should not accidentally include photographs.
         if ($selected === 'digital painting') {
             return $medium === 'digital painting'
                 || (
@@ -211,7 +204,6 @@ class GalleryController extends Controller
                 );
         }
 
-        // Watercolor may be recorded under either name.
         if ($selected === 'watercolor painting') {
             return in_array($medium, [
                 'watercolor',
@@ -221,18 +213,30 @@ class GalleryController extends Controller
             ], true);
         }
 
-        // Treat sketching and drawing as closely related art forms.
         if ($selected === 'sketching') {
-            return in_array($category, ['sketching', 'sketch', 'drawing'], true)
-                || in_array($medium, ['sketching', 'sketch', 'drawing'], true);
+            return in_array(
+                $category,
+                ['sketching', 'sketch', 'drawing'],
+                true
+            ) || in_array(
+                $medium,
+                ['sketching', 'sketch', 'drawing'],
+                true
+            );
         }
 
         if ($selected === 'drawing') {
-            return in_array($category, ['drawing', 'sketching', 'sketch'], true)
-                || in_array($medium, ['drawing', 'sketching', 'sketch'], true);
+            return in_array(
+                $category,
+                ['drawing', 'sketching', 'sketch'],
+                true
+            ) || in_array(
+                $medium,
+                ['drawing', 'sketching', 'sketch'],
+                true
+            );
         }
 
-        // For the remaining options, match either category or medium.
         return $category === $selected
             || $medium === $selected;
     }
@@ -267,13 +271,14 @@ class GalleryController extends Controller
 
     /**
      * Artwork details.
+     * Uploaded artworks are visible only after admin approval.
      */
     public function artwork(string $slug): View
     {
-        // Uploaded artwork URLs use /artworks/uploaded-123.
         if (preg_match('/^uploaded-(\d+)$/', $slug, $matches)) {
             $uploadedArtwork = Artwork::with('artist.artistProfile')
                 ->where('status', 'available')
+                ->where('moderation_status', 'approved')
                 ->find((int) $matches[1]);
 
             abort_unless($uploadedArtwork, 404);
@@ -309,7 +314,7 @@ class GalleryController extends Controller
             ]);
         }
 
-        // Existing sample artwork URLs continue to work.
+        // Preserve existing sample artwork URLs.
         $artwork = collect($this->artworkCollection())
             ->firstWhere('slug', $slug);
 
@@ -331,7 +336,6 @@ class GalleryController extends Controller
      */
     public function artist(string $slug): View
     {
-        // Database artist URLs use /artists/artist-123.
         if (preg_match('/^artist-(\d+)$/', $slug, $matches)) {
             $artist = User::with([
                 'artistProfile',
@@ -370,7 +374,7 @@ class GalleryController extends Controller
             ]);
         }
 
-        // Existing sample artist URLs continue to work.
+        // Preserve existing sample artist URLs.
         $artist = collect($this->sampleArtistCollection())
             ->firstWhere('slug', $slug);
 
@@ -405,12 +409,13 @@ class GalleryController extends Controller
     }
 
     /**
-     * Database artworks currently marked available.
+     * Database artworks approved by the admin and currently available.
      */
     private function publicArtworkCollection(): array
     {
         return Artwork::with('artist.artistProfile')
             ->where('status', 'available')
+            ->where('moderation_status', 'approved')
             ->latest()
             ->get()
             ->map(function (Artwork $artwork): array {

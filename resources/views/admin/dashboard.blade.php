@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -29,6 +28,7 @@
 
         html {
             scroll-behavior: smooth;
+            scroll-padding-top: 24px;
         }
 
         body {
@@ -38,13 +38,19 @@
             color: var(--dark-olive);
         }
 
+        a {
+            -webkit-tap-highlight-color: transparent;
+        }
+
         .admin-layout {
             display: flex;
             min-height: 100vh;
         }
 
+        /* SIDEBAR */
+
         .sidebar {
-            width: 245px;
+            width: 255px;
             flex-shrink: 0;
             padding: 30px 18px;
             background: var(--dark-olive);
@@ -83,12 +89,47 @@
             border-radius: 8px;
             margin-bottom: 5px;
             font-size: 14px;
+            transition: background 0.2s;
         }
 
         .nav-link:hover,
         .nav-link.active {
             background: var(--olive);
         }
+
+        .back-link {
+            display: inline-block;
+            color: white;
+            text-decoration: none;
+            border: 1px solid #899174;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-top: 25px;
+            font-size: 13px;
+        }
+
+        .logout-form {
+            margin-top: 12px;
+        }
+
+        .logout-button {
+            width: 100%;
+            border: 1px solid #899174;
+            border-radius: 8px;
+            padding: 11px;
+            background: transparent;
+            color: white;
+            cursor: pointer;
+            text-align: left;
+            font-size: 13px;
+        }
+
+        .logout-button:hover,
+        .back-link:hover {
+            background: var(--olive);
+        }
+
+        /* MAIN CONTENT */
 
         .main {
             flex: 1;
@@ -102,7 +143,7 @@
             align-items: center;
             gap: 16px;
             flex-wrap: wrap;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
         }
 
         .eyebrow {
@@ -120,7 +161,8 @@
 
         .subtitle {
             color: var(--muted);
-            line-height: 1.6;
+            line-height: 1.7;
+            font-size: 14px;
         }
 
         .admin-badge {
@@ -133,8 +175,18 @@
 
         .section-heading {
             font-size: 21px;
-            margin: 35px 0 16px;
+            margin: 36px 0 16px;
+            scroll-margin-top: 24px;
         }
+
+        .section-intro {
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.7;
+            margin: -5px 0 18px;
+        }
+
+        /* STATISTICS */
 
         .stats-grid {
             display: grid;
@@ -150,6 +202,15 @@
             border: 1px solid var(--border);
             border-radius: 14px;
             padding: 22px;
+        }
+
+        .stat-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 22px rgba(65, 76, 44, 0.07);
         }
 
         .stat-label {
@@ -170,15 +231,38 @@
             line-height: 1.5;
         }
 
+        /* MANAGEMENT CARDS */
+
         .management-grid {
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 16px;
         }
 
+        .management-card {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .management-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 22px rgba(65, 76, 44, 0.08);
+        }
+
         .card-icon {
-            font-size: 26px;
-            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: var(--cream);
+            color: var(--olive);
+            font-size: 25px;
+            margin-bottom: 16px;
         }
 
         .management-card h3 {
@@ -190,8 +274,15 @@
             color: var(--muted);
             font-size: 13px;
             line-height: 1.7;
-            min-height: 44px;
+            flex: 1;
+            margin: 0 0 18px;
         }
+
+        .card-action {
+            margin-top: auto;
+        }
+
+        /* STATUS */
 
         .status {
             display: inline-block;
@@ -220,6 +311,8 @@
             color: var(--danger-text);
         }
 
+        /* ALERTS */
+
         .alert {
             padding: 14px 18px;
             border-radius: 10px;
@@ -245,6 +338,8 @@
             color: var(--warning-text);
             border: 1px solid #f0dfae;
         }
+
+        /* APPLICATIONS */
 
         .application-list {
             display: grid;
@@ -310,7 +405,10 @@
         .portfolio-link {
             color: var(--olive);
             font-weight: bold;
-            overflow-wrap: anywhere;
+        }
+
+        .portfolio-link:hover {
+            color: var(--dark-olive);
         }
 
         .payment-box {
@@ -319,10 +417,11 @@
             padding: 16px;
             border-radius: 10px;
             margin-top: 16px;
+            scroll-margin-top: 24px;
         }
 
         .payment-box h4 {
-            margin: 0 0 12px;
+            margin: 0 0 16px;
         }
 
         .action-area {
@@ -336,7 +435,7 @@
         }
 
         .action-form {
-            margin-bottom: 14px;
+            margin-bottom: 18px;
         }
 
         .form-label {
@@ -361,6 +460,13 @@
             color: var(--dark-olive);
         }
 
+        .admin-notes:focus {
+            outline: 2px solid #a6b27e;
+            outline-offset: 1px;
+        }
+
+        /* BUTTONS */
+
         .button-row {
             display: flex;
             flex-wrap: wrap;
@@ -368,7 +474,10 @@
         }
 
         .button {
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
             border: 0;
             border-radius: 8px;
             padding: 11px 15px;
@@ -377,6 +486,12 @@
             cursor: pointer;
             text-decoration: none;
             font-family: inherit;
+            line-height: 1.4;
+            transition: background 0.2s, transform 0.2s;
+        }
+
+        .button:hover {
+            transform: translateY(-1px);
         }
 
         .button-primary {
@@ -397,11 +512,25 @@
             background: #f4d5d1;
         }
 
+        .button-outline {
+            background: white;
+            color: var(--olive);
+            border: 1px solid var(--border);
+        }
+
+        .button-outline:hover {
+            background: var(--cream);
+        }
+
         .button:focus-visible,
-        .nav-link:focus-visible {
+        .nav-link:focus-visible,
+        .back-link:focus-visible,
+        .logout-button:focus-visible {
             outline: 2px solid #a6b27e;
             outline-offset: 3px;
         }
+
+        /* EMPTY STATES AND ACTIVITY */
 
         .empty-state {
             padding: 35px 20px;
@@ -432,45 +561,37 @@
             border-bottom: 1px solid var(--border);
         }
 
+        .activity-item:first-child {
+            padding-top: 0;
+        }
+
         .activity-item:last-child {
             border-bottom: 0;
+            padding-bottom: 0;
         }
 
         .activity-item strong {
             font-size: 14px;
         }
 
-        .back-link {
-            display: inline-block;
-            color: white;
-            text-decoration: none;
-            border: 1px solid #899174;
-            border-radius: 8px;
-            padding: 10px 12px;
-            margin-top: 25px;
-            font-size: 13px;
+        .activity-heading {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
         }
 
-        .logout-form {
-            margin-top: 12px;
+        .footer-note {
+            margin-top: 30px;
+            padding-top: 18px;
+            border-top: 1px solid var(--border);
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.7;
         }
 
-        .logout-button {
-            width: 100%;
-            border: 1px solid #899174;
-            border-radius: 8px;
-            padding: 11px;
-            background: transparent;
-            color: white;
-            cursor: pointer;
-            text-align: left;
-            font-size: 13px;
-        }
-
-        .logout-button:hover,
-        .back-link:hover {
-            background: var(--olive);
-        }
+        /* RESPONSIVE */
 
         @media (max-width: 1150px) {
             .stats-grid {
@@ -479,6 +600,10 @@
 
             .management-grid {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .main {
+                padding: 24px;
             }
         }
 
@@ -489,16 +614,32 @@
 
             .sidebar {
                 width: 100%;
+                padding: 22px 16px;
+            }
+
+            .sidebar-subtitle {
+                margin-bottom: 20px;
+            }
+
+            .nav-label {
+                margin-top: 18px;
             }
 
             .main {
-                padding: 20px 14px;
+                padding: 22px 14px;
             }
 
             .stats-grid,
             .management-grid,
             .details-grid {
                 grid-template-columns: 1fr;
+            }
+
+            .stat-card,
+            .management-card,
+            .activity-panel,
+            .application-card {
+                padding: 18px;
             }
         }
     </style>
@@ -507,28 +648,52 @@
 <body>
 <div class="admin-layout">
 
+    {{-- SIDEBAR --}}
+
     <aside class="sidebar">
         <div class="brand">Art<span>fy.</span></div>
         <div class="sidebar-subtitle">Gallery administration</div>
 
         <div class="nav-label">Workspace</div>
 
-        <a href="#overview" class="nav-link active">⌂ &nbsp; Overview</a>
-        <a href="#memberships" class="nav-link">♙ &nbsp; Artist Memberships</a>
-        <a href="#payments" class="nav-link">৳ &nbsp; Payments</a>
-        <a href="#artworks" class="nav-link">▧ &nbsp; Artwork Review</a>
-        <a href="#exhibitions" class="nav-link">▤ &nbsp; Exhibitions</a>
+        <a href="#overview" class="nav-link active">
+            ⌂ &nbsp; Overview
+        </a>
 
-        <div class="nav-label">Platform</div>
+        <a href="#memberships" class="nav-link">
+            ♙ &nbsp; Artist Memberships
+        </a>
 
-        <a href="#users" class="nav-link">♧ &nbsp; User Management</a>
-        <a href="#reports" class="nav-link">▥ &nbsp; Reports & Activity</a>
+        <a href="#payments" class="nav-link">
+            ৳ &nbsp; Payments
+        </a>
+
+        <a href="{{ route('admin.artworks.index') }}" class="nav-link">
+            ▧ &nbsp; All Artworks
+        </a>
+
+        <div class="nav-label">People</div>
+
+        <a href="{{ route('admin.artists.index') }}" class="nav-link">
+            ♙ &nbsp; All Artists
+        </a>
+
+        <a href="{{ route('admin.art-lovers.index') }}" class="nav-link">
+            ♧ &nbsp; All Art Lovers
+        </a>
+
+        <div class="nav-label">Reports</div>
+
+        <a href="#recent-activity" class="nav-link">
+            ▥ &nbsp; Recent Activity
+        </a>
 
         <a href="{{ route('home') }}" class="back-link">
             ← Back to Artfy
         </a>
 
-        <form method="POST" action="{{ route('logout') }}"
+        <form method="POST"
+              action="{{ route('logout') }}"
               class="logout-form">
             @csrf
 
@@ -539,6 +704,8 @@
     </aside>
 
 
+    {{-- MAIN DASHBOARD --}}
+
     <main class="main">
 
         <header class="topbar" id="overview">
@@ -548,8 +715,8 @@
                 <h1>Admin Dashboard</h1>
 
                 <div class="subtitle">
-                    Manage artists, membership applications and
-                    payment verification.
+                    Manage your gallery, artist memberships, payments,
+                    artworks and registered users from one place.
                 </div>
             </div>
 
@@ -610,7 +777,6 @@
                 </div>
             </div>
 
-
             <div class="stat-card">
                 <div class="stat-label">Pending Applications</div>
 
@@ -619,10 +785,9 @@
                 </div>
 
                 <div class="stat-note">
-                    Waiting for your decision
+                    Applications awaiting your decision
                 </div>
             </div>
-
 
             <div class="stat-card">
                 <div class="stat-label">Payments to Verify</div>
@@ -632,10 +797,9 @@
                 </div>
 
                 <div class="stat-note">
-                    Submitted transaction IDs awaiting verification
+                    Submitted payments awaiting verification
                 </div>
             </div>
-
 
             <div class="stat-card">
                 <div class="stat-label">Verified Payments</div>
@@ -652,15 +816,141 @@
         </div>
 
 
+        {{-- QUICK ACCESS MANAGEMENT CENTRE --}}
+
+        <h2 class="section-heading">Management Centre</h2>
+
+        <p class="section-intro">
+            Choose a section below to open its dedicated management page.
+        </p>
+
+        <div class="management-grid">
+
+            {{-- MEMBERSHIPS --}}
+
+            <section class="management-card">
+                <div class="card-icon">♙</div>
+
+                <h3>Artist Memberships</h3>
+
+                <p>
+                    Review artist applications, biographies, portfolios
+                    and membership eligibility.
+                </p>
+
+                <a href="#memberships"
+                   class="button button-primary card-action">
+                    View Applications →
+                </a>
+            </section>
+
+
+            {{-- PAYMENTS --}}
+
+            <section class="management-card">
+                <div class="card-icon">৳</div>
+
+                <h3>Payment Verification</h3>
+
+                <p>
+                    Check submitted transaction IDs and verify payments
+                    for approved artist memberships.
+                </p>
+
+                <a href="#payments"
+                   class="button button-primary card-action">
+                    Review Payments →
+                </a>
+            </section>
+
+
+            {{-- ALL ARTWORKS --}}
+
+            <section class="management-card">
+                <div class="card-icon">▧</div>
+
+                <h3>All Artworks</h3>
+
+                <p>
+                    Open artwork review to inspect submissions and
+                    approve or reject artworks.
+                </p>
+
+                <a href="{{ route('admin.artworks.index') }}"
+                   class="button button-primary card-action">
+                    Manage Artworks →
+                </a>
+            </section>
+
+
+            {{-- ALL ARTISTS --}}
+
+            <section class="management-card">
+                <div class="card-icon">♙</div>
+
+                <h3>All Artists</h3>
+
+                <p>
+                    Browse registered artists, view their profile
+                    information and inspect their artwork.
+                </p>
+
+                <a href="{{ route('admin.artists.index') }}"
+                   class="button button-primary card-action">
+                    Manage Artists →
+                </a>
+            </section>
+
+
+            {{-- ALL ART LOVERS --}}
+
+            <section class="management-card">
+                <div class="card-icon">♧</div>
+
+                <h3>All Art Lovers</h3>
+
+                <p>
+                    View registered art-lover accounts and open
+                    individual account details.
+                </p>
+
+                <a href="{{ route('admin.art-lovers.index') }}"
+                   class="button button-primary card-action">
+                    Manage Art Lovers →
+                </a>
+            </section>
+
+
+            {{-- ACTIVITY --}}
+
+            <section class="management-card">
+                <div class="card-icon">▥</div>
+
+                <h3>Reports & Activity</h3>
+
+                <p>
+                    Review recent membership submissions, application
+                    decisions and payment statuses.
+                </p>
+
+                <a href="#recent-activity"
+                   class="button button-primary card-action">
+                    View Activity →
+                </a>
+            </section>
+
+        </div>
+
+
         {{-- MEMBERSHIP APPLICATIONS --}}
 
         <h2 class="section-heading" id="memberships">
             Artist Membership Applications
         </h2>
 
-        <p class="subtitle">
+        <p class="section-intro">
             Review artist details, approve or reject applications,
-            and check submitted payment information.
+            and inspect the submitted payment information.
         </p>
 
 
@@ -676,14 +966,11 @@
                         <div class="application-header">
 
                             <div>
-                                <h3>
-                                    {{ $application->artist_name }}
-                                </h3>
+                                <h3>{{ $application->artist_name }}</h3>
 
                                 <div class="muted">
                                     Application #{{ $application->id }}
-                                    ·
-                                    Submitted
+                                    · Submitted
                                     {{ $application->created_at
                                         ? $application->created_at->format('d M Y, h:i A')
                                         : 'Date unavailable' }}
@@ -699,10 +986,11 @@
                                 </div>
                             </div>
 
-
                             <div>
                                 @php
-                                    $applicationStatus = $application->status ?? 'pending';
+                                    $applicationStatus =
+                                        $application->status ?? 'pending';
+
                                     $applicationStatusClass = in_array(
                                         $applicationStatus,
                                         ['pending', 'approved', 'rejected']
@@ -717,36 +1005,47 @@
                         </div>
 
 
-                        <div class="details-grid">
+                        {{-- ARTIST DETAILS --}}
 
-                            {{-- ARTIST INFORMATION --}}
+                        <div class="details-grid">
 
                             <div class="detail-box">
                                 <div class="detail-label">Biography</div>
 
-                                <div class="detail-value">{{ $application->biography }}</div>
+                                <div class="detail-value">
+                                    {{ $application->biography ?: 'Not provided' }}
+                                </div>
                             </div>
 
-
-                            {{-- ART CATEGORIES --}}
 
                             <div class="detail-box">
                                 <div class="detail-label">Art Categories</div>
 
                                 @php
-                                    $categories = $application->art_categories
-                                        ?? [];
+                                    $categories = $application->art_categories ?? [];
 
                                     if (is_string($categories)) {
-                                        $decodedCategories = json_decode($categories, true);
+                                        $decodedCategories = json_decode(
+                                            $categories,
+                                            true
+                                        );
 
                                         $categories = is_array($decodedCategories)
                                             ? $decodedCategories
                                             : [];
                                     }
 
-                                    if (empty($categories) && $application->art_category) {
-                                        $categories = [$application->art_category];
+                                    if (
+                                        empty($categories)
+                                        && $application->art_category
+                                    ) {
+                                        $categories = [
+                                            $application->art_category
+                                        ];
+                                    }
+
+                                    if (!is_array($categories)) {
+                                        $categories = [];
                                     }
                                 @endphp
 
@@ -757,8 +1056,6 @@
                                 </div>
                             </div>
 
-
-                            {{-- PORTFOLIO --}}
 
                             <div class="detail-box">
                                 <div class="detail-label">Portfolio</div>
@@ -778,8 +1075,6 @@
                             </div>
 
 
-                            {{-- MEMBERSHIP FEE --}}
-
                             <div class="detail-box">
                                 <div class="detail-label">Annual Membership Fee</div>
 
@@ -796,9 +1091,9 @@
 
                         {{-- PAYMENT INFORMATION --}}
 
-                        <div class="payment-box" id="payments">
+                        <div class="payment-box">
 
-                            <h4>Payment Information</h4>
+                            <h4 id="payments">Payment Information</h4>
 
                             <div class="details-grid">
 
@@ -806,7 +1101,8 @@
                                     <div class="detail-label">Payment Status</div>
 
                                     @php
-                                        $paymentStatus = $application->payment_status ?? 'unpaid';
+                                        $paymentStatus =
+                                            $application->payment_status ?? 'unpaid';
 
                                         $paymentStatusClass = in_array(
                                             $paymentStatus,
@@ -869,7 +1165,7 @@
                             @endif
 
 
-                            {{-- VERIFY PAYMENT BUTTON --}}
+                            {{-- VERIFY PAYMENT --}}
 
                             @if (
                                 $application->status === 'approved'
@@ -887,15 +1183,14 @@
 
                                     @csrf
 
-                                    <button type="submit" class="button button-primary">
+                                    <button type="submit"
+                                            class="button button-primary">
                                         Verify Payment
                                     </button>
 
                                 </form>
 
-                            @elseif (
-                                $application->payment_status === 'verified'
-                            )
+                            @elseif ($application->payment_status === 'verified')
 
                                 <p class="muted">
                                     Payment verified successfully.
@@ -907,8 +1202,8 @@
                             )
 
                                 <p class="muted">
-                                    Membership must be approved before payment
-                                    verification is available.
+                                    Membership must be approved before
+                                    payment verification is available.
                                 </p>
 
                             @else
@@ -922,7 +1217,7 @@
                         </div>
 
 
-                        {{-- ADMIN APPROVAL / REJECTION --}}
+                        {{-- APPROVAL AND REJECTION --}}
 
                         <div class="action-area">
 
@@ -931,12 +1226,12 @@
                                 <h4>Review Application</h4>
 
                                 <p class="muted">
-                                    Check the artist's information before
-                                    making a decision.
+                                    Review the artist's information before
+                                    making a membership decision.
                                 </p>
 
 
-                                {{-- APPROVE FORM --}}
+                                {{-- APPROVE APPLICATION --}}
 
                                 <form method="POST"
                                       action="{{ route(
@@ -969,7 +1264,7 @@
                                 </form>
 
 
-                                {{-- REJECT FORM --}}
+                                {{-- REJECT APPLICATION --}}
 
                                 <form method="POST"
                                       action="{{ route(
@@ -1008,8 +1303,8 @@
                                 <h4>Membership Approved</h4>
 
                                 <p class="muted">
-                                    The artist's membership application has
-                                    been approved.
+                                    This artist's membership application
+                                    has been approved.
 
                                     @if ($application->payment_status === 'verified')
                                         Payment is verified. The artist meets
@@ -1037,7 +1332,9 @@
                                 <div class="detail-box">
                                     <div class="detail-label">Admin Notes</div>
 
-                                    <div class="detail-value">{{ $application->admin_notes }}</div>
+                                    <div class="detail-value">
+                                        {{ $application->admin_notes }}
+                                    </div>
                                 </div>
                             @endif
 
@@ -1048,7 +1345,6 @@
                 @endforeach
 
             </div>
-
 
         @else
 
@@ -1064,105 +1360,7 @@
         @endif
 
 
-        {{-- MANAGEMENT CENTRE --}}
-
-        <h2 class="section-heading">Management Centre</h2>
-
-        <div class="management-grid">
-
-            <section class="management-card">
-                <div class="card-icon">♙</div>
-
-                <h3>Artist Memberships</h3>
-
-                <p>
-                    Review artist biographies, portfolios and membership
-                    applications.
-                </p>
-
-                <a href="#memberships" class="button button-primary">
-                    View Applications
-                </a>
-            </section>
-
-
-            <section class="management-card">
-                <div class="card-icon">৳</div>
-
-                <h3>Payment Verification</h3>
-
-                <p>
-                    Check transaction IDs and verify approved artist
-                    membership payments.
-                </p>
-
-                <a href="#payments" class="button button-primary">
-                    View Payments
-                </a>
-            </section>
-
-
-            <section class="management-card" id="artworks">
-                <div class="card-icon">▧</div>
-
-                <h3>Artwork Review</h3>
-
-                <p>
-                    Artwork review will be connected when the artwork
-                    submission workflow is implemented.
-                </p>
-
-                <span class="status">Coming next</span>
-            </section>
-
-
-            <section class="management-card" id="exhibitions">
-                <div class="card-icon">▤</div>
-
-                <h3>Exhibition Management</h3>
-
-                <p>
-                    Exhibition management will be connected when its
-                    database workflow is implemented.
-                </p>
-
-                <span class="status">Coming next</span>
-            </section>
-
-
-            <section class="management-card" id="users">
-                <div class="card-icon">♧</div>
-
-                <h3>User Management</h3>
-
-                <p>
-                    Registered account management will be connected
-                    separately.
-                </p>
-
-                <span class="status">Coming next</span>
-            </section>
-
-
-            <section class="management-card" id="reports">
-                <div class="card-icon">▥</div>
-
-                <h3>Reports & Activity</h3>
-
-                <p>
-                    Review recent membership submissions, decisions
-                    and payment verification activity below.
-                </p>
-
-                <a href="#recent-activity" class="button button-primary">
-                    View Activity
-                </a>
-            </section>
-
-        </div>
-
-
-        {{-- RECENT ACTIVITY --}}
+        {{-- RECENT MEMBERSHIP ACTIVITY --}}
 
         <h2 class="section-heading" id="recent-activity">
             Recent Membership Activity
@@ -1176,9 +1374,18 @@
 
                     <div class="activity-item">
 
-                        <strong>
-                            {{ $application->artist_name }}
-                        </strong>
+                        <div class="activity-heading">
+                            <strong>
+                                {{ $application->artist_name }}
+                            </strong>
+
+                            <span class="status status-{{ in_array(
+                                $application->status ?? 'pending',
+                                ['pending', 'approved', 'rejected']
+                            ) ? $application->status : 'pending' }}">
+                                {{ ucfirst($application->status ?? 'pending') }}
+                            </span>
+                        </div>
 
                         <div class="muted">
                             Application #{{ $application->id }}
@@ -1210,6 +1417,17 @@
 
             @endif
 
+        </div>
+
+
+        {{-- FOOTER --}}
+
+        <div class="footer-note">
+            Artfy Administration · Manage your gallery responsibly.
+            <a href="{{ route('home') }}"
+               class="portfolio-link">
+                Return to Discover
+            </a>
         </div>
 
     </main>

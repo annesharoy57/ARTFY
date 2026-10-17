@@ -19,6 +19,7 @@ class Artwork extends Model
         'medium',
         'price',
         'status',
+        'moderation_status',
         'is_sold',
     ];
 
