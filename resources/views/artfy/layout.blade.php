@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#f5f3e8">
+    <meta name="theme-color" content="#f8f6ef">
 
     {{-- Page title --}}
     @if (request()->routeIs('home'))
@@ -37,7 +37,8 @@
         <title>Artfy | Art Gallery</title>
     @endif
 
-    <link rel="icon" type="image/svg+xml"
+    <link rel="icon"
+          type="image/svg+xml"
           href="{{ asset('artfy-logo.svg') }}?v=1">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -48,7 +49,9 @@
         rel="stylesheet">
 
     <link rel="stylesheet"
-          href="{{ asset('css/artfy.css') }}?v=20261016-clean-navbar">
+          href="{{ asset('css/artfy.css') }}?v=20261017-auth-roles">
+
+    @stack('styles')
 </head>
 
 <body>
@@ -56,7 +59,7 @@
     {{-- ================= HEADER ================= --}}
     <header class="site-header">
 
-        {{-- Brand --}}
+        {{-- Artfy logo --}}
         <a class="brand"
            href="{{ route('home') }}"
            aria-label="Artfy home">
@@ -80,22 +83,26 @@
         <nav class="main-nav" aria-label="Main navigation">
 
             <a @class(['active' => request()->routeIs('home')])
-               href="{{ route('home') }}">
+               href="{{ route('home') }}"
+               @if (request()->routeIs('home')) aria-current="page" @endif>
                 Discover
             </a>
 
             <a @class(['active' => request()->routeIs('artworks.*')])
-               href="{{ route('artworks.index') }}">
+               href="{{ route('artworks.index') }}"
+               @if (request()->routeIs('artworks.*')) aria-current="page" @endif>
                 Artworks
             </a>
 
             <a @class(['active' => request()->routeIs('artists.*')])
-               href="{{ route('artists.index') }}">
+               href="{{ route('artists.index') }}"
+               @if (request()->routeIs('artists.*')) aria-current="page" @endif>
                 Artists
             </a>
 
             <a @class(['active' => request()->routeIs('exhibitions.*')])
-               href="{{ route('exhibitions.index') }}">
+               href="{{ route('exhibitions.index') }}"
+               @if (request()->routeIs('exhibitions.*')) aria-current="page" @endif>
                 Exhibitions
             </a>
 
@@ -120,17 +127,20 @@
 
             @else
 
-                {{-- Artists and art lovers get one My Profile link.
-                     Admins do not see this regular-user link. --}}
+                {{-- Regular users see My Profile --}}
                 @unless (auth()->user()->isAdmin())
-                    <a
-                        href="{{ route('my-profile') }}"
-                        @class([
-                            'text-link',
-                            'active' => request()->routeIs('my-profile')
-                                || request()->routeIs('artist-profile.*'),
-                        ])
-                    >
+                    <a href="{{ route('my-profile') }}"
+                       @class([
+                           'text-link',
+                           'active' => request()->routeIs('my-profile')
+                               || request()->routeIs('artist-profile.*'),
+                       ])
+                       @if (
+                           request()->routeIs('my-profile')
+                           || request()->routeIs('artist-profile.*')
+                       )
+                           aria-current="page"
+                       @endif>
                         My Profile
                     </a>
                 @endunless
@@ -241,11 +251,10 @@
                     class="auth-modal-close"
                     aria-label="Close dialog"
                     data-auth-close>
-                &times;
+                ×
             </button>
 
             <div class="auth-modal-heading">
-
                 <span class="auth-modal-eyebrow">
                     THE ART COMMUNITY
                 </span>
@@ -255,12 +264,11 @@
                 <p id="authModalDescription">
                     How would you like to continue?
                 </p>
-
             </div>
 
             <div class="auth-role-options">
 
-                {{-- Artist option --}}
+                {{-- 01: Artist --}}
                 <a class="auth-role-card"
                    id="artistAuthLink"
                    href="{{ route('login', ['role' => 'artist']) }}">
@@ -271,7 +279,6 @@
                     </div>
 
                     <div class="auth-role-info">
-
                         <span class="auth-role-kicker">
                             CREATE &amp; EXHIBIT
                         </span>
@@ -284,14 +291,13 @@
                         </p>
 
                         <span class="auth-role-link" id="artistAuthAction">
-                            Continue as Artist
+                            Login as Artist
                             <span aria-hidden="true">→</span>
                         </span>
-
                     </div>
                 </a>
 
-                {{-- Art Lover option --}}
+                {{-- 02: Art Lover --}}
                 <a class="auth-role-card"
                    id="loverAuthLink"
                    href="{{ route('login', ['role' => 'art_lover']) }}">
@@ -302,7 +308,6 @@
                     </div>
 
                     <div class="auth-role-info">
-
                         <span class="auth-role-kicker">
                             DISCOVER &amp; COLLECT
                         </span>
@@ -315,10 +320,39 @@
                         </p>
 
                         <span class="auth-role-link" id="loverAuthAction">
-                            Continue as Art Lover
+                            Login as Art Lover
                             <span aria-hidden="true">→</span>
                         </span>
+                    </div>
+                </a>
 
+                {{-- 03: Admin (visible ONLY during Login) --}}
+                <a class="auth-role-card admin-role-card"
+                   id="adminAuthLink"
+                   href="{{ route('login', ['role' => 'admin']) }}"
+                   hidden>
+
+                    <div class="auth-role-art admin-role-art">
+                        <span>03</span>
+                        <span class="auth-role-symbol" aria-hidden="true">✦</span>
+                    </div>
+
+                    <div class="auth-role-info">
+                        <span class="auth-role-kicker">
+                            ADMINISTRATION
+                        </span>
+
+                        <h3>I'm an Admin</h3>
+
+                        <p>
+                            Access the administration area using
+                            your authorized administrator account.
+                        </p>
+
+                        <span class="auth-role-link" id="adminAuthAction">
+                            Login as Admin
+                            <span aria-hidden="true">→</span>
+                        </span>
                     </div>
                 </a>
 
@@ -346,23 +380,32 @@
 
             const artistLink = document.getElementById('artistAuthLink');
             const loverLink = document.getElementById('loverAuthLink');
+            const adminLink = document.getElementById('adminAuthLink');
 
             const artistAction = document.getElementById('artistAuthAction');
             const loverAction = document.getElementById('loverAuthAction');
+            const adminAction = document.getElementById('adminAuthAction');
 
             let previousFocus = null;
 
-            // Laravel generates the authentication URLs.
+            // Laravel generates the URLs for each role.
             const urls = {
                 login: {
                     artist: @json(route('login', ['role' => 'artist'])),
-                    art_lover: @json(route('login', ['role' => 'art_lover']))
+                    art_lover: @json(route('login', ['role' => 'art_lover'])),
+                    admin: @json(route('login', ['role' => 'admin']))
                 },
+
                 register: {
                     artist: @json(route('register', ['role' => 'artist'])),
                     art_lover: @json(route('register', ['role' => 'art_lover']))
                 }
             };
+
+            function setActionLabel(element, label) {
+                // Change only the label, preserving the existing arrow span.
+                element.firstChild.textContent = label + ' ' ;
+            }
 
             function openModal(mode) {
                 previousFocus = document.activeElement;
@@ -378,16 +421,31 @@
                     ? 'Choose your place in our art community.'
                     : 'Choose the type of account you want to access.';
 
+                // Artist and Art Lover are available in both modes.
                 artistLink.href = urls[page].artist;
                 loverLink.href = urls[page].art_lover;
 
-                artistAction.innerHTML = isRegister
-                    ? 'Apply as an Artist <span aria-hidden="true">→</span>'
-                    : 'Login as Artist <span aria-hidden="true">→</span>';
+                // Admin is available ONLY when Login is selected.
+                adminLink.hidden = isRegister;
 
-                loverAction.innerHTML = isRegister
-                    ? 'Create Free Account <span aria-hidden="true">→</span>'
-                    : 'Login as Art Lover <span aria-hidden="true">→</span>';
+                if (!isRegister) {
+                    adminLink.href = urls.login.admin;
+                }
+
+                setActionLabel(
+                    artistAction,
+                    isRegister ? 'Apply as an Artist' : 'Login as Artist'
+                );
+
+                setActionLabel(
+                    loverAction,
+                    isRegister ? 'Create Free Account' : 'Login as Art Lover'
+                );
+
+                setActionLabel(
+                    adminAction,
+                    'Login as Admin'
+                );
 
                 modal.inert = false;
                 modal.setAttribute('aria-hidden', 'false');
@@ -401,15 +459,17 @@
                 modal.classList.remove('is-open');
                 modal.setAttribute('aria-hidden', 'true');
                 modal.inert = true;
-
                 document.body.classList.remove('auth-modal-open');
 
-                if (previousFocus && typeof previousFocus.focus === 'function') {
+                if (
+                    previousFocus &&
+                    typeof previousFocus.focus === 'function'
+                ) {
                     previousFocus.focus();
                 }
             }
 
-            // Open from Login or Sign Up.
+            // Open the modal from Login and Sign Up.
             document.querySelectorAll('[data-auth-mode]').forEach(button => {
                 button.addEventListener('click', () => {
                     openModal(button.dataset.authMode);
@@ -432,6 +492,8 @@
             });
         })();
     </script>
+
+    @stack('scripts')
 
 </body>
 </html>
