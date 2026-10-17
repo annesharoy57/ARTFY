@@ -1,3 +1,4 @@
+
 @extends('artfy.layout')
 
 @section('title', ($profile?->artist_name ?: $user->name) . ' | Artfy')
@@ -357,6 +358,7 @@
 @php
     $artistName = $profile?->artist_name ?: $user->name;
     $artworkCount = $artworks->count();
+    $isAdminPreview = $adminPreview ?? false;
 @endphp
 
 <div class="artist-profile-page">
@@ -402,13 +404,22 @@
         </div>
 
         <div class="artist-profile-actions">
-            <a class="button button-outline" href="{{ route('artist-profile.edit') }}">
-                Edit Profile
-            </a>
+            @if ($isAdminPreview)
+                <a class="button button-outline"
+                   href="{{ route('admin.artists.index') }}">
+                    ← Back to Artists
+                </a>
+            @else
+                <a class="button button-outline"
+                   href="{{ route('artist-profile.edit') }}">
+                    Edit Profile
+                </a>
 
-            <a class="button button-dark" href="{{ route('artist.artworks.create') }}">
-                + Add Your Work
-            </a>
+                <a class="button button-dark"
+                   href="{{ route('artist.artworks.create') }}">
+                    + Add Your Work
+                </a>
+            @endif
         </div>
     </section>
 
@@ -454,9 +465,12 @@
                 <h2>My Artworks</h2>
             </div>
 
-            <a class="button button-dark" href="{{ route('artist.artworks.create') }}">
-                Add Your Work →
-            </a>
+            @unless ($isAdminPreview)
+                <a class="button button-dark"
+                   href="{{ route('artist.artworks.create') }}">
+                    Add Your Work →
+                </a>
+            @endunless
         </div>
 
         @if ($artworks->isNotEmpty())
@@ -501,12 +515,24 @@
             </div>
         @else
             <div class="artist-empty-portfolio">
-                <h3>Your artistic journey starts here.</h3>
-                <p>Your uploaded artworks will appear here for visitors to explore.</p>
+                <h3>
+                    {{ $isAdminPreview
+                        ? 'This artist has not uploaded any artworks yet.'
+                        : 'Your artistic journey starts here.' }}
+                </h3>
 
-                <a class="button button-dark" href="{{ route('artist.artworks.create') }}">
-                    Upload Your First Artwork →
-                </a>
+                <p>
+                    {{ $isAdminPreview
+                        ? 'The artist’s uploaded artworks will appear here.'
+                        : 'Your uploaded artworks will appear here for visitors to explore.' }}
+                </p>
+
+                @unless ($isAdminPreview)
+                    <a class="button button-dark"
+                       href="{{ route('artist.artworks.create') }}">
+                        Upload Your First Artwork →
+                    </a>
+                @endunless
             </div>
         @endif
     </section>
