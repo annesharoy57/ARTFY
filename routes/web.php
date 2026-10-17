@@ -1,3 +1,4 @@
+
 <?php
 
 use App\Http\Controllers\GalleryController;
@@ -5,6 +6,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ArtistProfileController;
 use App\Http\Controllers\AdminMembershipController;
 use App\Http\Controllers\ArtistArtworkController;
+use App\Http\Controllers\AdminArtworkController;
+use App\Http\Controllers\AdminUserController;
 use Illuminate\Support\Facades\Route;
 
 // ========================================
@@ -133,30 +136,14 @@ Route::middleware('auth')->group(function () {
         'update',
     ])->name('artist-profile.update');
 
-    
     // ------------------------------------
-    // MY PROFILE — VIEW
+    // MY PROFILE
     // ------------------------------------
 
     Route::get('/my-profile', [
         ArtistProfileController::class,
         'show',
     ])->name('my-profile');
-
-    // ------------------------------------
-    // ARTIST PROFILE — EDIT
-    // ------------------------------------
-
-    Route::get('/artist/my-profile', [
-        ArtistProfileController::class,
-        'edit',
-    ])->name('artist-profile.edit');
-
-    Route::put('/artist/my-profile', [
-        ArtistProfileController::class,
-        'update',
-    ])->name('artist-profile.update');
-
 
     // ------------------------------------
     // ARTIST STUDIO
@@ -200,7 +187,7 @@ Route::middleware('auth')->group(function () {
     ])->name('admin.dashboard');
 
     // ------------------------------------
-    // APPROVE MEMBERSHIP
+    // ADMIN MEMBERSHIP MANAGEMENT
     // ------------------------------------
 
     Route::post('/admin/memberships/{application}/approve', [
@@ -208,21 +195,47 @@ Route::middleware('auth')->group(function () {
         'approve',
     ])->name('admin.memberships.approve');
 
-    // ------------------------------------
-    // REJECT MEMBERSHIP
-    // ------------------------------------
-
     Route::post('/admin/memberships/{application}/reject', [
         AdminMembershipController::class,
         'reject',
     ])->name('admin.memberships.reject');
 
     // ------------------------------------
-    // VERIFY ARTIST PAYMENT
+    // ADMIN PAYMENT VERIFICATION
     // ------------------------------------
 
     Route::post('/admin/memberships/{application}/verify-payment', [
         AdminMembershipController::class,
         'verifyPayment',
     ])->name('admin.memberships.verify-payment');
+
+    // ====================================
+    // ADMIN ARTWORK REVIEW
+    // ====================================
+
+    Route::get('/admin/artworks', [
+        AdminArtworkController::class,
+        'index',
+    ])->name('admin.artworks.index');
+
+    Route::post('/admin/artworks/{artwork}/approve', [
+        AdminArtworkController::class,
+        'approve',
+    ])->name('admin.artworks.approve');
+
+    Route::post('/admin/artworks/{artwork}/reject', [
+        AdminArtworkController::class,
+        'reject',
+    ])->name('admin.artworks.reject');
+    Route::get('/admin/artists', [AdminUserController::class, 'artists'])
+    ->name('admin.artists.index');
+
+     Route::get('/admin/artists/{user}', [AdminUserController::class, 'showArtist'])
+    ->name('admin.artists.show');
+
+    Route::get('/admin/art-lovers', [AdminUserController::class, 'artLovers'])
+    ->name('admin.art-lovers.index');
+
+    Route::get('/admin/art-lovers/{user}', [AdminUserController::class, 'showArtLover'])
+    ->name('admin.art-lovers.show');
 });

@@ -12,8 +12,9 @@ class ArtistArtworkController extends Controller
     {
         $user = auth()->user();
 
-        if (!$user->isArtist()) {
-            return redirect()->route('home')
+        if (!$user || !$user->isArtist()) {
+            return redirect()
+                ->route('home')
                 ->with('error', 'Artist accounts only.');
         }
 
@@ -24,7 +25,8 @@ class ArtistArtworkController extends Controller
             $application->status !== 'approved' ||
             $application->payment_status !== 'verified'
         ) {
-            return redirect()->route('artist.application')
+            return redirect()
+                ->route('artist.application')
                 ->with(
                     'error',
                     'Your artist membership must be approved and your payment verified.'
@@ -40,6 +42,8 @@ class ArtistArtworkController extends Controller
             return $redirect;
         }
 
+        // Show all of this artist's artworks, including pending
+        // and rejected works, so the artist can see their status.
         $artworks = Artwork::where('user_id', auth()->id())
             ->latest()
             ->get();
@@ -73,21 +77,32 @@ class ArtistArtworkController extends Controller
             ],
             'category' => ['nullable', 'string', 'max:255'],
             'medium' => ['nullable', 'string', 'max:255'],
-            'price' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
+            'price' => [
+                'nullable',
+                'numeric',
+                'min:0',
+                'max:99999999.99',
+            ],
         ]);
 
         $validated['image'] = $request->file('image')
             ->store('artworks', 'public');
 
         $validated['user_id'] = auth()->id();
+
+        // Availability and admin review are separate statuses.
         $validated['status'] = 'available';
+        $validated['moderation_status'] = 'pending';
         $validated['is_sold'] = false;
 
         Artwork::create($validated);
 
         return redirect()
             ->route('artist.studio')
-            ->with('success', 'Your artwork has been uploaded successfully!');
+            ->with(
+                'success',
+                'Your artwork was uploaded and is waiting for admin approval.'
+            );
     }
 
     public function destroy(Artwork $artwork)
@@ -96,9 +111,16 @@ class ArtistArtworkController extends Controller
             return $redirect;
         }
 
-        abort_unless($artwork->user_id === auth()->id(), 403);
+        // Artists may delete only their own artworks.
+        abort_unless(
+            (int) $artwork->user_id === (int) auth()->id(),
+            403
+        );
 
-        Storage::disk('public')->delete($artwork->image);
+        if ($artwork->image) {
+            Storage::disk('public')->delete($artwork->image);
+        }
+
         $artwork->delete();
 
         return redirect()
