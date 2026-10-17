@@ -2,42 +2,158 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Artwork;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class GalleryController extends Controller
 {
+    /**
+     * Discover homepage.
+     * Keep the existing homepage structure and sample content.
+     */
     public function home(): View
     {
+        $artworks = array_merge(
+            $this->publicArtworkCollection(),
+            array_slice($this->artworkCollection(), 0, 3)
+        );
+
         return view('artfy.home', [
-            'artworks' => array_slice($this->artworkCollection(), 0, 3),
+            'artworks' => array_slice($artworks, 0, 3),
             'artists' => $this->artistCollection(),
             'exhibitions' => $this->exhibitionCollection(),
         ]);
     }
 
+    /**
+     * Explore artworks with combined search, art type, budget and sorting.
+     */
     public function artworks(Request $request): View
     {
-        $artworks = $this->artworkCollection();
         $query = trim((string) $request->query('q', ''));
-        $category = (string) $request->query('category', '');
-        $type = (string) $request->query('type', '');
+        $artType = trim((string) $request->query('art_type', ''));
+        $maxPriceInput = $request->query('max_price', '');
         $sort = (string) $request->query('sort', 'latest');
 
-        $artworks = array_values(array_filter($artworks, function (array $artwork) use ($query, $category, $type): bool {
-            $matchesQuery = $query === ''
-                || str_contains(strtolower($artwork['title'].' '.$artwork['artist']), strtolower($query));
+        // Accept only a valid, non-negative numeric budget.
+        $maxPrice = is_numeric($maxPriceInput)
+            && (float) $maxPriceInput >= 0
+                ? (float) $maxPriceInput
+                : null;
 
-            return $matchesQuery
-                && ($category === '' || $artwork['category'] === $category)
-                && ($type === '' || $artwork['type'] === $type);
-        }));
+        // Prevent arbitrary sorting values.
+        $allowedSorts = [
+            'latest',
+            'oldest',
+            'popular',
+            'price-low',
+            'price-high',
+        ];
 
-        if ($sort === 'popular') {
-            usort($artworks, fn (array $a, array $b): int => $b['likes'] <=> $a['likes']);
-        } elseif ($sort === 'price-low') {
-            usort($artworks, fn (array $a, array $b): int => $a['price'] <=> $b['price']);
+        if (!in_array($sort, $allowedSorts, true)) {
+            $sort = 'latest';
         }
+
+        $artworks = array_merge(
+            $this->publicArtworkCollection(),
+            $this->artworkCollection()
+        );
+
+        // Apply every selected filter together.
+        $artworks = array_values(array_filter(
+            $artworks,
+            function (array $artwork) use (
+                $query,
+                $artType,
+                $maxPrice
+            ): bool {
+                $searchText = implode(' ', [
+                    $artwork['title'] ?? '',
+                    $artwork['artist'] ?? '',
+                    $artwork['category'] ?? '',
+                    $artwork['type'] ?? '',
+                    $artwork['description'] ?? '',
+                ]);
+
+                $matchesQuery = $query === ''
+                    || str_contains(
+                        mb_strtolower($searchText),
+                        mb_strtolower($query)
+                    );
+
+                $matchesArtType = $artType === ''
+                    || $this->matchesArtType($artwork, $artType);
+
+                $price = $artwork['price'] ?? null;
+
+                $matchesPrice = $maxPrice === null
+                    || (
+                        $price !== null
+                        && (float) $price <= $maxPrice
+                    );
+
+                return $matchesQuery
+                    && $matchesArtType
+                    && $matchesPrice;
+            }
+        ));
+
+        // Sort the filtered collection.
+        switch ($sort) {
+            case 'oldest':
+                usort(
+                    $artworks,
+                    fn (array $a, array $b): int =>
+                        ($a['_created_at'] ?? 0)
+                        <=> ($b['_created_at'] ?? 0)
+                );
+                break;
+
+            case 'popular':
+                usort(
+                    $artworks,
+                    fn (array $a, array $b): int =>
+                        ($b['likes'] ?? 0)
+                        <=> ($a['likes'] ?? 0)
+                );
+                break;
+
+            case 'price-low':
+                usort(
+                    $artworks,
+                    fn (array $a, array $b): int =>
+                        ($a['price'] ?? PHP_INT_MAX)
+                        <=> ($b['price'] ?? PHP_INT_MAX)
+                );
+                break;
+
+            case 'price-high':
+                usort(
+                    $artworks,
+                    fn (array $a, array $b): int =>
+                        ($b['price'] ?? -1)
+                        <=> ($a['price'] ?? -1)
+                );
+                break;
+
+            case 'latest':
+            default:
+                usort(
+                    $artworks,
+                    fn (array $a, array $b): int =>
+                        ($b['_created_at'] ?? 0)
+                        <=> ($a['_created_at'] ?? 0)
+                );
+                break;
+        }
+
+        // Remove internal sorting metadata before rendering.
+        foreach ($artworks as &$artwork) {
+            unset($artwork['_created_at']);
+        }
+        unset($artwork);
 
         return view('artfy.listing', [
             'title' => 'Explore artworks',
@@ -46,12 +162,84 @@ class GalleryController extends Controller
             'pageType' => 'artworks',
             'items' => $artworks,
             'query' => $query,
-            'category' => $category,
-            'type' => $type,
+            'artType' => $artType,
+            'maxPrice' => $maxPriceInput,
             'sort' => $sort,
         ]);
     }
 
+    /**
+     * Match one combined art-type dropdown against category and medium.
+     */
+    private function matchesArtType(
+        array $artwork,
+        string $selectedType
+    ): bool {
+        $category = mb_strtolower(trim(
+            (string) ($artwork['category'] ?? '')
+        ));
+
+        $medium = mb_strtolower(trim(
+            (string) ($artwork['type'] ?? '')
+        ));
+
+        $selected = mb_strtolower(trim($selectedType));
+
+        $normalize = static function (string $value): string {
+            return trim(
+                preg_replace('/[^a-z0-9]+/i', ' ', $value) ?? ''
+            );
+        };
+
+        $category = $normalize($category);
+        $medium = $normalize($medium);
+        $selected = $normalize($selected);
+
+        // Oil painting may be stored as category=Painting, medium=Oil.
+        if ($selected === 'oil painting') {
+            return $medium === 'oil'
+                || $medium === 'oil painting'
+                || ($category === 'oil painting');
+        }
+
+        // Digital painting should not accidentally include photographs.
+        if ($selected === 'digital painting') {
+            return $medium === 'digital painting'
+                || (
+                    $medium === 'digital'
+                    && $category === 'painting'
+                );
+        }
+
+        // Watercolor may be recorded under either name.
+        if ($selected === 'watercolor painting') {
+            return in_array($medium, [
+                'watercolor',
+                'watercolour',
+                'watercolor painting',
+                'watercolour painting',
+            ], true);
+        }
+
+        // Treat sketching and drawing as closely related art forms.
+        if ($selected === 'sketching') {
+            return in_array($category, ['sketching', 'sketch', 'drawing'], true)
+                || in_array($medium, ['sketching', 'sketch', 'drawing'], true);
+        }
+
+        if ($selected === 'drawing') {
+            return in_array($category, ['drawing', 'sketching', 'sketch'], true)
+                || in_array($medium, ['drawing', 'sketching', 'sketch'], true);
+        }
+
+        // For the remaining options, match either category or medium.
+        return $category === $selected
+            || $medium === $selected;
+    }
+
+    /**
+     * Artists listing.
+     */
     public function artists(): View
     {
         return view('artfy.listing', [
@@ -63,6 +251,9 @@ class GalleryController extends Controller
         ]);
     }
 
+    /**
+     * Exhibitions listing.
+     */
     public function exhibitions(): View
     {
         return view('artfy.listing', [
@@ -74,10 +265,57 @@ class GalleryController extends Controller
         ]);
     }
 
+    /**
+     * Artwork details.
+     */
     public function artwork(string $slug): View
     {
-        $artwork = collect($this->artworkCollection())->firstWhere('slug', $slug);
+        // Uploaded artwork URLs use /artworks/uploaded-123.
+        if (preg_match('/^uploaded-(\d+)$/', $slug, $matches)) {
+            $uploadedArtwork = Artwork::with('artist.artistProfile')
+                ->where('status', 'available')
+                ->find((int) $matches[1]);
+
+            abort_unless($uploadedArtwork, 404);
+
+            $artist = $uploadedArtwork->artist;
+            $profile = $artist?->artistProfile;
+
+            $artwork = [
+                'slug' => 'uploaded-' . $uploadedArtwork->id,
+                'title' => $uploadedArtwork->title,
+                'description' => $uploadedArtwork->description
+                    ?: 'Explore this original artwork on Artfy.',
+                'artist' => $profile?->artist_name
+                    ?: ($artist?->name ?? 'Artfy Artist'),
+                'artist_slug' => $artist
+                    ? 'artist-' . $artist->id
+                    : null,
+                'category' => $uploadedArtwork->category ?: 'Other',
+                'type' => $uploadedArtwork->medium ?: 'Not specified',
+                'price' => $uploadedArtwork->price,
+                'likes' => 0,
+                'color' => 'green',
+                'image' => $uploadedArtwork->image,
+                'is_uploaded' => true,
+            ];
+
+            return view('artfy.detail', [
+                'title' => $artwork['title'],
+                'eyebrow' => 'Original artwork',
+                'description' => $artwork['description'],
+                'item' => $artwork,
+                'pageType' => 'artwork',
+            ]);
+        }
+
+        // Existing sample artwork URLs continue to work.
+        $artwork = collect($this->artworkCollection())
+            ->firstWhere('slug', $slug);
+
         abort_unless($artwork, 404);
+
+        $artwork['is_uploaded'] = false;
 
         return view('artfy.detail', [
             'title' => $artwork['title'],
@@ -88,9 +326,54 @@ class GalleryController extends Controller
         ]);
     }
 
+    /**
+     * Artist details and portfolio.
+     */
     public function artist(string $slug): View
     {
-        $artist = collect($this->artistCollection())->firstWhere('slug', $slug);
+        // Database artist URLs use /artists/artist-123.
+        if (preg_match('/^artist-(\d+)$/', $slug, $matches)) {
+            $artist = User::with([
+                'artistProfile',
+                'artistApplication',
+            ])
+                ->where('role', 'artist')
+                ->whereHas('artistApplication', function ($query) {
+                    $query->where('status', 'approved')
+                        ->where('payment_status', 'verified');
+                })
+                ->find((int) $matches[1]);
+
+            abort_unless($artist, 404);
+
+            $profile = $artist->artistProfile;
+            $application = $artist->artistApplication;
+
+            $item = [
+                'slug' => 'artist-' . $artist->id,
+                'name' => $profile?->artist_name ?: $artist->name,
+                'discipline' => $profile?->art_category
+                    ?: 'Independent artist',
+                'bio' => $profile?->bio
+                    ?: $application?->biography
+                    ?: 'Discover original artwork by this Artfy artist.',
+                'image' => $profile?->profile_photo,
+                'color' => 'green',
+            ];
+
+            return view('artfy.detail', [
+                'title' => $item['name'],
+                'eyebrow' => 'Artist portfolio',
+                'description' => $item['bio'],
+                'item' => $item,
+                'pageType' => 'artist',
+            ]);
+        }
+
+        // Existing sample artist URLs continue to work.
+        $artist = collect($this->sampleArtistCollection())
+            ->firstWhere('slug', $slug);
+
         abort_unless($artist, 404);
 
         return view('artfy.detail', [
@@ -102,9 +385,14 @@ class GalleryController extends Controller
         ]);
     }
 
+    /**
+     * Exhibition details.
+     */
     public function exhibition(string $slug): View
     {
-        $exhibition = collect($this->exhibitionCollection())->firstWhere('slug', $slug);
+        $exhibition = collect($this->exhibitionCollection())
+            ->firstWhere('slug', $slug);
+
         abort_unless($exhibition, 404);
 
         return view('artfy.detail', [
@@ -116,6 +404,87 @@ class GalleryController extends Controller
         ]);
     }
 
+    /**
+     * Database artworks currently marked available.
+     */
+    private function publicArtworkCollection(): array
+    {
+        return Artwork::with('artist.artistProfile')
+            ->where('status', 'available')
+            ->latest()
+            ->get()
+            ->map(function (Artwork $artwork): array {
+                $artist = $artwork->artist;
+                $profile = $artist?->artistProfile;
+
+                return [
+                    'slug' => 'uploaded-' . $artwork->id,
+                    'title' => $artwork->title,
+                    'artist' => $profile?->artist_name
+                        ?: ($artist?->name ?? 'Artfy Artist'),
+                    'artist_slug' => $artist
+                        ? 'artist-' . $artist->id
+                        : null,
+                    'category' => $artwork->category ?: 'Other',
+                    'type' => $artwork->medium ?: 'Not specified',
+                    'price' => $artwork->price,
+                    'likes' => 0,
+                    'color' => 'green',
+                    'description' => $artwork->description
+                        ?: 'Explore this original artwork on Artfy.',
+                    'image' => $artwork->image,
+                    'is_uploaded' => true,
+                    '_created_at' => $artwork->created_at?->timestamp ?? 0,
+                ];
+            })
+            ->all();
+    }
+
+    /**
+     * Approved artists followed by the sample artists.
+     */
+    private function artistCollection(): array
+    {
+        $databaseArtists = User::with([
+            'artistProfile',
+            'artistApplication',
+        ])
+            ->where('role', 'artist')
+            ->whereHas('artistApplication', function ($query) {
+                $query->where('status', 'approved')
+                    ->where('payment_status', 'verified');
+            })
+            ->latest()
+            ->get()
+            ->map(function (User $artist): array {
+                $profile = $artist->artistProfile;
+                $application = $artist->artistApplication;
+
+                return [
+                    'slug' => 'artist-' . $artist->id,
+                    'name' => $profile?->artist_name ?: $artist->name,
+                    'discipline' => $profile?->art_category
+                        ?: $application?->art_category
+                        ?: 'Independent artist',
+                    'bio' => $profile?->bio
+                        ?: $application?->biography
+                        ?: 'Discover original artwork by this Artfy artist.',
+                    'color' => 'green',
+                    'image' => $profile?->profile_photo,
+                ];
+            })
+            ->all();
+
+        return array_merge(
+            $databaseArtists,
+            $this->sampleArtistCollection()
+        );
+    }
+
+    /**
+     * Existing demo artworks.
+     * Prices here are sample amounts in BDT.
+     */
     private function artworkCollection(): array
     {
         return [
@@ -126,10 +495,11 @@ class GalleryController extends Controller
                 'artist_slug' => 'maya-chen',
                 'category' => 'Painting',
                 'type' => 'Acrylic',
-                'price' => 240,
+                'price' => 2400,
                 'likes' => 128,
                 'color' => 'peach',
                 'description' => 'A soft study of the first light of day, painted in warm, gentle layers.',
+                '_created_at' => 0,
             ],
             [
                 'slug' => 'blue-hour',
@@ -138,10 +508,11 @@ class GalleryController extends Controller
                 'artist_slug' => 'leo-martin',
                 'category' => 'Photography',
                 'type' => 'Digital',
-                'price' => 180,
+                'price' => 1800,
                 'likes' => 96,
                 'color' => 'blue',
                 'description' => 'A quiet city street caught between the last light of day and the first stars.',
+                '_created_at' => 0,
             ],
             [
                 'slug' => 'wild-garden',
@@ -150,10 +521,11 @@ class GalleryController extends Controller
                 'artist_slug' => 'amara-okafor',
                 'category' => 'Illustration',
                 'type' => 'Digital',
-                'price' => 125,
+                'price' => 1250,
                 'likes' => 164,
                 'color' => 'green',
                 'description' => 'A lively imagined garden filled with color, movement, and small hidden details.',
+                '_created_at' => 0,
             ],
             [
                 'slug' => 'soft-forms',
@@ -162,15 +534,19 @@ class GalleryController extends Controller
                 'artist_slug' => 'maya-chen',
                 'category' => 'Painting',
                 'type' => 'Oil',
-                'price' => 320,
+                'price' => 3200,
                 'likes' => 82,
                 'color' => 'lilac',
                 'description' => 'An abstract composition exploring balance, shape, and a quieter kind of color.',
+                '_created_at' => 0,
             ],
         ];
     }
 
-    private function artistCollection(): array
+    /**
+     * Existing demo artists.
+     */
+    private function sampleArtistCollection(): array
     {
         return [
             [
@@ -197,6 +573,9 @@ class GalleryController extends Controller
         ];
     }
 
+    /**
+     * Existing demo exhibitions.
+     */
     private function exhibitionCollection(): array
     {
         return [
