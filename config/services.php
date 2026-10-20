@@ -2,18 +2,6 @@
 
 return [
 
-    /*
-    |--------------------------------------------------------------------------
-    | Third Party Services
-    |--------------------------------------------------------------------------
-    |
-    | This file is for storing the credentials for third party services such
-    | as Mailgun, Postmark, AWS and more. This file provides the de facto
-    | location for this type of information, allowing packages to have
-    | a conventional file to locate the various service credentials.
-    |
-    */
-
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
     ],
@@ -34,5 +22,18 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
+    
+    'sslcommerz' => [
+        'store_id' => env('SSLCOMMERZ_STORE_ID'),
+        'store_password' => env('SSLCOMMERZ_STORE_PASSWORD'),
+        'sandbox' => env('SSLCOMMERZ_SANDBOX', true),
+
+        'api_url' => env('SSLCOMMERZ_SANDBOX', true)
+            ? 'https://sandbox.sslcommerz.com/gwprocess/v4/api.php'
+            : 'https://securepay.sslcommerz.com/gwprocess/v4/api.php',
+
+        'callback_url' => env('SSLCOMMERZ_CALLBACK_URL'),
+    ],
+
 
 ];

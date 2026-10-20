@@ -3,20 +3,31 @@
 namespace App\Http\Controllers;
 
 use App\Models\ArtistMembershipApplication;
+use App\Models\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class AdminMembershipController extends Controller
 {
     /**
-     * Display real artist membership applications
-     * and payment statistics in the Admin Dashboard.
+     * Ensure only administrators can access these pages.
+     */
+    private function checkAdmin(): void
+    {
+        abort_unless(
+            Auth::check() && Auth::user()->isAdmin(),
+            403,
+            'Only administrators can access this page.'
+        );
+    }
+
+    /**
+     * Main admin dashboard overview.
+     * Shows membership and membership-payment statistics only.
      */
     public function index()
     {
-        if (!Auth::user() || !Auth::user()->isAdmin()) {
-            abort(403, 'Only administrators can access this page.');
-        }
+        $this->checkAdmin();
 
         $applications = ArtistMembershipApplication::with('user')
             ->latest()
@@ -49,6 +60,130 @@ class AdminMembershipController extends Controller
             ->count();
 
         return view('admin.dashboard', compact(
+            'totalApplications',
+            'pendingApplications',
+            'approvedApplications',
+            'rejectedApplications',
+            'paymentsToVerify',
+            'totalPayments'
+        ));
+    }
+
+    /**
+     * Dedicated verified artwork sales and commission page.
+     *
+     * Includes only verified artwork orders.
+     * Reads the existing recorded amounts without recalculating
+     * or overwriting historical commissions.
+     */
+    public function sales()
+    {
+        $this->checkAdmin();
+
+        $verifiedOrders = Order::query()
+            ->where('payment_status', 'verified');
+
+        $totalSoldArtworks = (clone $verifiedOrders)->count();
+
+        $totalSalesValue = (clone $verifiedOrders)
+            ->sum('price');
+
+        $totalCommissionEarned = (clone $verifiedOrders)
+            ->sum('commission_amount');
+
+        $totalArtistEarnings = (clone $verifiedOrders)
+            ->sum('artist_amount');
+
+        $sales = (clone $verifiedOrders)
+            ->with(['buyer', 'artist'])
+            ->orderByDesc('verified_at')
+            ->orderByDesc('id')
+            ->paginate(15);
+
+        return view('admin.sales', compact(
+            'totalSoldArtworks',
+            'totalSalesValue',
+            'totalCommissionEarned',
+            'totalArtistEarnings',
+            'sales'
+        ));
+    }
+
+    /**
+     * Dedicated artist membership applications page.
+     */
+    public function memberships()
+    {
+        $this->checkAdmin();
+
+        $applications = ArtistMembershipApplication::with('user')
+            ->latest()
+            ->paginate(12);
+
+        return view('admin.memberships', compact('applications'));
+    }
+
+    /**
+     * Dedicated membership payment verification page.
+     */
+    public function payments()
+    {
+        $this->checkAdmin();
+
+        $applications = ArtistMembershipApplication::with('user')
+            ->where('status', 'approved')
+            ->where('payment_status', 'pending')
+            ->whereNotNull('payment_reference')
+            ->where('payment_reference', '!=', '')
+            ->latest()
+            ->paginate(12);
+
+        return view('admin.payments', compact('applications'));
+    }
+
+    /**
+     * Dedicated reports and activity page.
+     */
+    public function reports()
+    {
+        $this->checkAdmin();
+
+        $applications = ArtistMembershipApplication::with('user')
+            ->latest()
+            ->paginate(15);
+
+        $totalApplications = ArtistMembershipApplication::count();
+
+        $pendingApplications = ArtistMembershipApplication::where(
+            'status',
+            'pending'
+        )->count();
+
+        $approvedApplications = ArtistMembershipApplication::where(
+            'status',
+            'approved'
+        )->count();
+
+        $rejectedApplications = ArtistMembershipApplication::where(
+            'status',
+            'rejected'
+        )->count();
+
+        $paymentsToVerify = ArtistMembershipApplication::where(
+            'status',
+            'approved'
+        )
+            ->where('payment_status', 'pending')
+            ->whereNotNull('payment_reference')
+            ->where('payment_reference', '!=', '')
+            ->count();
+
+        $totalPayments = ArtistMembershipApplication::where(
+            'payment_status',
+            'verified'
+        )->count();
+
+        return view('admin.reports', compact(
             'applications',
             'totalApplications',
             'pendingApplications',
@@ -66,9 +201,7 @@ class AdminMembershipController extends Controller
         Request $request,
         ArtistMembershipApplication $application
     ) {
-        if (!Auth::user() || !Auth::user()->isAdmin()) {
-            abort(403, 'Only administrators can approve applications.');
-        }
+        $this->checkAdmin();
 
         if ($application->status !== 'pending') {
             return back()->with(
@@ -101,9 +234,7 @@ class AdminMembershipController extends Controller
         Request $request,
         ArtistMembershipApplication $application
     ) {
-        if (!Auth::user() || !Auth::user()->isAdmin()) {
-            abort(403, 'Only administrators can reject applications.');
-        }
+        $this->checkAdmin();
 
         if ($application->status !== 'pending') {
             return back()->with(
@@ -130,15 +261,14 @@ class AdminMembershipController extends Controller
     }
 
     /**
-     * Verify a payment after manually checking the transaction.
+     * Verify a membership payment after manually checking
+     * the submitted transaction reference.
      */
     public function verifyPayment(
         Request $request,
         ArtistMembershipApplication $application
     ) {
-        if (!Auth::user() || !Auth::user()->isAdmin()) {
-            abort(403, 'Only administrators can verify payments.');
-        }
+        $this->checkAdmin();
 
         if ($application->status !== 'approved') {
             return back()->with(

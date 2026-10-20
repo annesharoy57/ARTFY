@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
@@ -25,6 +24,8 @@
         <title>Artist Studio | Artfy</title>
     @elseif (request()->routeIs('admin.*'))
         <title>Admin Dashboard | Artfy</title>
+    @elseif (request()->routeIs('notifications.*'))
+        <title>Notifications | Artfy</title>
     @elseif (request()->routeIs('login'))
         <title>Login | Artfy</title>
     @elseif (request()->routeIs('register'))
@@ -50,6 +51,78 @@
 
     <link rel="stylesheet"
           href="{{ asset('css/artfy.css') }}?v=20261017-auth-roles">
+
+    {{-- Notification bell styling --}}
+    <style>
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .notification-bell-link {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            flex-shrink: 0;
+            color: #414c2c;
+            border: 1px solid rgba(65, 76, 44, 0.18);
+            border-radius: 50%;
+            text-decoration: none;
+            transition: background-color 0.2s ease,
+                        transform 0.2s ease;
+        }
+
+        .notification-bell-link:hover {
+            background: #eeece2;
+            transform: translateY(-1px);
+        }
+
+        .notification-bell-icon {
+            display: block;
+            width: 21px;
+            height: 21px;
+        }
+
+        .notification-count {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 19px;
+            height: 19px;
+            padding: 0 5px;
+            border: 2px solid #f8f6ef;
+            border-radius: 999px;
+            background: #b74f37;
+            color: #fff;
+            font-family: "DM Sans", sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .notification-bell-link:focus-visible {
+            outline: 2px solid #55613a;
+            outline-offset: 3px;
+        }
+
+        @media (max-width: 600px) {
+            .header-actions {
+                gap: 10px;
+            }
+
+            .notification-bell-link {
+                width: 36px;
+                height: 36px;
+            }
+        }
+    </style>
 
     @stack('styles')
 </head>
@@ -127,7 +200,39 @@
 
             @else
 
-                {{-- Regular users see My Profile --}}
+                {{-- Notification bell for signed-in users --}}
+                @php
+                    $unreadNotificationCount = auth()->user()
+                        ->unreadNotifications()
+                        ->count();
+                @endphp
+
+                <a href="{{ route('notifications.index') }}"
+                   class="notification-bell-link"
+                   aria-label="Notifications{{ $unreadNotificationCount > 0 ? ', ' . $unreadNotificationCount . ' unread' : '' }}"
+                   title="Notifications">
+
+                    <svg class="notification-bell-icon"
+                         viewBox="0 0 24 24"
+                         fill="none"
+                         stroke="currentColor"
+                         stroke-width="1.7"
+                         stroke-linecap="round"
+                         stroke-linejoin="round"
+                         aria-hidden="true">
+                        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path>
+                        <path d="M10 21h4"></path>
+                    </svg>
+
+                    @if ($unreadNotificationCount > 0)
+                        <span class="notification-count">
+                            {{ $unreadNotificationCount > 99 ? '99+' : $unreadNotificationCount }}
+                        </span>
+                    @endif
+
+                </a>
+
+                {{-- My Profile for artists and art lovers --}}
                 @unless (auth()->user()->isAdmin())
                     <a href="{{ route('my-profile') }}"
                        @class([
@@ -145,6 +250,7 @@
                     </a>
                 @endunless
 
+                {{-- Logout --}}
                 <form action="{{ route('logout') }}"
                       method="POST"
                       class="logout-form">
@@ -404,7 +510,7 @@
 
             function setActionLabel(element, label) {
                 // Change only the label, preserving the existing arrow span.
-                element.firstChild.textContent = label + ' ' ;
+                element.firstChild.textContent = label + ' ';
             }
 
             function openModal(mode) {

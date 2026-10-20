@@ -1,4 +1,3 @@
-
 <?php
 
 use App\Http\Controllers\GalleryController;
@@ -8,6 +7,8 @@ use App\Http\Controllers\AdminMembershipController;
 use App\Http\Controllers\ArtistArtworkController;
 use App\Http\Controllers\AdminArtworkController;
 use App\Http\Controllers\AdminUserController;
+use App\Http\Controllers\ArtworkPurchaseController;
+use App\Http\Controllers\NotificationController;
 use Illuminate\Support\Facades\Route;
 
 // ========================================
@@ -86,6 +87,31 @@ Route::view('/choose-role', 'auth.choose-role')
     ->name('auth.choose-role');
 
 // ========================================
+// SSLCOMMERZ ARTWORK PAYMENT CALLBACKS
+// These routes stay outside the auth middleware group.
+// ========================================
+
+Route::post('/payment/sslcommerz/success', [
+    ArtworkPurchaseController::class,
+    'success',
+])->name('payment.sslcommerz.success');
+
+Route::post('/payment/sslcommerz/fail', [
+    ArtworkPurchaseController::class,
+    'fail',
+])->name('payment.sslcommerz.fail');
+
+Route::post('/payment/sslcommerz/cancel', [
+    ArtworkPurchaseController::class,
+    'cancel',
+])->name('payment.sslcommerz.cancel');
+
+Route::post('/payment/sslcommerz/ipn', [
+    ArtworkPurchaseController::class,
+    'ipn',
+])->name('payment.sslcommerz.ipn');
+
+// ========================================
 // LOGOUT
 // ========================================
 
@@ -98,6 +124,20 @@ Route::post('/logout', [AuthController::class, 'logout'])
 // ========================================
 
 Route::middleware('auth')->group(function () {
+
+    // ------------------------------------
+    // ARTWORK PURCHASE
+    // ------------------------------------
+
+    Route::get('/artworks/{slug}/buy', [
+        ArtworkPurchaseController::class,
+        'create',
+    ])->name('artworks.purchase.create');
+
+    Route::post('/artworks/{slug}/buy', [
+        ArtworkPurchaseController::class,
+        'store',
+    ])->name('artworks.purchase.store');
 
     // ------------------------------------
     // ARTIST MEMBERSHIP APPLICATION
@@ -137,13 +177,23 @@ Route::middleware('auth')->group(function () {
     ])->name('artist-profile.update');
 
     // ------------------------------------
-    // MY PROFILE
+    // MY PROFILE - ARTIST / ART LOVER
     // ------------------------------------
 
     Route::get('/my-profile', [
         ArtistProfileController::class,
         'show',
     ])->name('my-profile');
+
+    Route::get('/my-profile/edit', [
+        ArtistProfileController::class,
+        'editArtLover',
+    ])->name('my-profile.edit');
+
+    Route::put('/my-profile', [
+        ArtistProfileController::class,
+        'updateArtLover',
+    ])->name('my-profile.update');
 
     // ------------------------------------
     // ARTIST STUDIO
@@ -186,9 +236,37 @@ Route::middleware('auth')->group(function () {
         'index',
     ])->name('admin.dashboard');
 
-    // ------------------------------------
+    // ====================================
+    // DEDICATED ADMIN PAGES
+    // ====================================
+
+    // Artist membership applications
+    Route::get('/admin/memberships', [
+        AdminMembershipController::class,
+        'memberships',
+    ])->name('admin.memberships.index');
+
+    // Membership payment verification
+    Route::get('/admin/payments', [
+        AdminMembershipController::class,
+        'payments',
+    ])->name('admin.payments.index');
+
+    // Reports and activity
+    Route::get('/admin/reports', [
+        AdminMembershipController::class,
+        'reports',
+    ])->name('admin.reports.index');
+
+    // Sales and commission
+    Route::get('/admin/sales', [
+        AdminMembershipController::class,
+        'sales',
+    ])->name('admin.sales.index');
+
+    // ====================================
     // ADMIN MEMBERSHIP MANAGEMENT
-    // ------------------------------------
+    // ====================================
 
     Route::post('/admin/memberships/{application}/approve', [
         AdminMembershipController::class,
@@ -201,7 +279,7 @@ Route::middleware('auth')->group(function () {
     ])->name('admin.memberships.reject');
 
     // ------------------------------------
-    // ADMIN PAYMENT VERIFICATION
+    // ADMIN MEMBERSHIP PAYMENT VERIFICATION
     // ------------------------------------
 
     Route::post('/admin/memberships/{application}/verify-payment', [
@@ -227,15 +305,47 @@ Route::middleware('auth')->group(function () {
         AdminArtworkController::class,
         'reject',
     ])->name('admin.artworks.reject');
-    Route::get('/admin/artists', [AdminUserController::class, 'artists'])
-    ->name('admin.artists.index');
 
-     Route::get('/admin/artists/{user}', [AdminUserController::class, 'showArtist'])
-    ->name('admin.artists.show');
+    // ====================================
+    // ADMIN ARTISTS
+    // ====================================
 
-    Route::get('/admin/art-lovers', [AdminUserController::class, 'artLovers'])
-    ->name('admin.art-lovers.index');
+    Route::get('/admin/artists', [
+        AdminUserController::class,
+        'artists',
+    ])->name('admin.artists.index');
 
-    Route::get('/admin/art-lovers/{user}', [AdminUserController::class, 'showArtLover'])
-    ->name('admin.art-lovers.show');
+    Route::get('/admin/artists/{user}', [
+        AdminUserController::class,
+        'showArtist',
+    ])->name('admin.artists.show');
+
+    // ====================================
+    // ADMIN ART LOVERS
+    // ====================================
+
+    Route::get('/admin/art-lovers', [
+        AdminUserController::class,
+        'artLovers',
+    ])->name('admin.art-lovers.index');
+
+    Route::get('/admin/art-lovers/{user}', [
+        AdminUserController::class,
+        'showArtLover',
+    ])->name('admin.art-lovers.show');
+
+    // ====================================
+    // NOTIFICATIONS
+    // ====================================
+
+    Route::get('/notifications', [
+        NotificationController::class,
+        'index',
+    ])->name('notifications.index');
+
+    Route::get('/notifications/{notification}/open', [
+        NotificationController::class,
+        'open',
+    ])->name('notifications.open');
+
 });
