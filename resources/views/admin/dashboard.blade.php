@@ -1,1436 +1,482 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+@extends('admin.layout')
 
-    <title>Admin Dashboard | Artfy</title>
+@section('title', 'Admin Dashboard | Artfy')
 
-    <style>
-        :root {
-            --cream: #f5f3e8;
-            --olive: #55613a;
-            --dark-olive: #414c2c;
-            --muted: #72795f;
-            --white: #ffffff;
-            --border: #e5e2d5;
-            --success: #e5f3e5;
-            --success-text: #276738;
-            --warning: #fff1cf;
-            --warning-text: #805b00;
-            --danger: #fbe8e6;
-            --danger-text: #a33128;
-        }
+@section('page_eyebrow', 'Artfy / Administration')
 
-        * {
-            box-sizing: border-box;
-        }
+@section('page_title', 'Admin Dashboard')
 
-        html {
-            scroll-behavior: smooth;
-            scroll-padding-top: 24px;
-        }
+@section('page_intro', 'Manage memberships, payments, artworks and registered users from one place.')
 
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: var(--cream);
-            color: var(--dark-olive);
-        }
+@push('styles')
+<style>
+    /* Dashboard-specific styles.
+       The sidebar and notification header come from admin.layout. */
 
-        a {
-            -webkit-tap-highlight-color: transparent;
-        }
+    .dashboard-section-heading {
+        font-family: Georgia, serif;
+        font-size: 23px;
+        font-weight: normal;
+        color: var(--dark-olive);
+        margin: 32px 0 16px;
+    }
 
-        .admin-layout {
-            display: flex;
-            min-height: 100vh;
-        }
+    .dashboard-section-intro {
+        color: var(--muted);
+        line-height: 1.7;
+        font-size: 14px;
+        margin: -5px 0 20px;
+    }
 
-        /* SIDEBAR */
+    /* Statistics cards */
 
-        .sidebar {
-            width: 255px;
-            flex-shrink: 0;
-            padding: 30px 18px;
-            background: var(--dark-olive);
-            color: white;
-        }
+    .dashboard-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+    }
 
-        .brand {
-            font-size: 29px;
-            font-weight: bold;
-            margin: 0 0 8px;
-        }
+    .dashboard-stat-card {
+        min-width: 0;
+        padding: 22px;
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        transition: transform .2s ease, box-shadow .2s ease;
+    }
 
-        .brand span {
-            color: #d9dfb9;
-        }
+    .dashboard-stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 22px rgba(65, 76, 44, .07);
+    }
 
-        .sidebar-subtitle {
-            color: #d5d9c8;
-            font-size: 12px;
-            margin-bottom: 36px;
-        }
+    .dashboard-stat-label {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.6;
+    }
 
-        .nav-label {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            color: #c6ccb3;
-            margin: 24px 10px 12px;
-        }
+    .dashboard-stat-value {
+        color: var(--dark-olive);
+        font-size: 30px;
+        font-weight: bold;
+        line-height: 1.3;
+        margin: 15px 0 8px;
+        overflow-wrap: anywhere;
+    }
 
-        .nav-link {
-            display: block;
-            color: #f5f3e8;
-            text-decoration: none;
-            padding: 12px 10px;
-            border-radius: 8px;
-            margin-bottom: 5px;
-            font-size: 14px;
-            transition: background 0.2s;
-        }
+    .dashboard-stat-note {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.6;
+    }
 
-        .nav-link:hover,
-        .nav-link.active {
-            background: var(--olive);
-        }
+    /* Management cards */
 
-        .back-link {
-            display: inline-block;
-            color: white;
-            text-decoration: none;
-            border: 1px solid #899174;
-            border-radius: 8px;
-            padding: 10px 12px;
-            margin-top: 25px;
-            font-size: 13px;
-        }
+    .dashboard-management-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+    }
 
-        .logout-form {
-            margin-top: 12px;
-        }
+    .dashboard-management-card {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 23px;
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        transition: transform .2s ease, box-shadow .2s ease;
+    }
 
-        .logout-button {
-            width: 100%;
-            border: 1px solid #899174;
-            border-radius: 8px;
-            padding: 11px;
-            background: transparent;
-            color: white;
-            cursor: pointer;
-            text-align: left;
-            font-size: 13px;
-        }
+    .dashboard-management-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 22px rgba(65, 76, 44, .07);
+    }
 
-        .logout-button:hover,
-        .back-link:hover {
-            background: var(--olive);
-        }
+    .dashboard-card-icon {
+        width: 48px;
+        height: 48px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 16px;
+        border-radius: 12px;
+        background: var(--cream);
+        color: var(--olive);
+        font-size: 23px;
+    }
 
-        /* MAIN CONTENT */
+    .dashboard-management-card h3 {
+        margin: 0 0 10px;
+        color: var(--dark-olive);
+        font-family: Georgia, serif;
+        font-size: 19px;
+        font-weight: normal;
+        line-height: 1.4;
+    }
 
-        .main {
-            flex: 1;
-            min-width: 0;
-            padding: 30px;
-        }
+    .dashboard-management-card p {
+        flex: 1;
+        margin: 0 0 20px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.8;
+    }
 
-        .topbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 16px;
-            flex-wrap: wrap;
-            margin-bottom: 25px;
-        }
+    .dashboard-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        max-width: 100%;
+        padding: 11px 15px;
+        border: 0;
+        border-radius: 8px;
+        background: var(--olive);
+        color: var(--white);
+        font-size: 13px;
+        font-weight: bold;
+        line-height: 1.5;
+        text-align: center;
+        text-decoration: none;
+        overflow-wrap: anywhere;
+        transition: background .2s ease;
+    }
 
-        .eyebrow {
-            color: var(--muted);
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            font-size: 11px;
-            font-weight: bold;
-        }
+    .dashboard-button:hover {
+        background: var(--dark-olive);
+        color: var(--white);
+    }
 
-        h1 {
-            font-size: clamp(27px, 4vw, 38px);
-            margin: 10px 0;
-        }
+    .dashboard-button:focus-visible {
+        outline: 2px solid var(--olive);
+        outline-offset: 3px;
+    }
 
-        .subtitle {
-            color: var(--muted);
-            line-height: 1.7;
-            font-size: 14px;
-        }
+    /* Session messages */
 
-        .admin-badge {
-            background: #e5e8d7;
-            color: var(--dark-olive);
-            border-radius: 30px;
-            padding: 11px 16px;
-            font-size: 13px;
-        }
+    .dashboard-alert {
+        padding: 14px 18px;
+        margin-bottom: 15px;
+        border: 1px solid transparent;
+        border-radius: 10px;
+        font-size: 14px;
+        line-height: 1.7;
+    }
 
-        .section-heading {
-            font-size: 21px;
-            margin: 36px 0 16px;
-            scroll-margin-top: 24px;
-        }
+    .dashboard-alert-success {
+        background: var(--success);
+        border-color: #c9e5cb;
+        color: #276738;
+    }
 
-        .section-intro {
-            color: var(--muted);
-            font-size: 14px;
-            line-height: 1.7;
-            margin: -5px 0 18px;
-        }
+    .dashboard-alert-error {
+        background: var(--danger);
+        border-color: #f0cbc7;
+        color: #a33128;
+    }
 
-        /* STATISTICS */
+    .dashboard-alert-validation {
+        background: var(--warning);
+        border-color: #f0dfae;
+        color: #805b00;
+    }
 
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 16px;
-        }
+    .dashboard-alert ul {
+        margin: 8px 0 0;
+        padding-left: 22px;
+    }
 
-        .stat-card,
-        .management-card,
-        .activity-panel,
-        .application-card {
-            background: var(--white);
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            padding: 22px;
-        }
+    .dashboard-footer-note {
+        margin-top: 32px;
+        padding-top: 20px;
+        border-top: 1px solid var(--border);
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.8;
+    }
 
-        .stat-card {
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
+    .dashboard-footer-note a {
+        color: var(--olive);
+        font-weight: bold;
+        text-decoration: none;
+    }
 
-        .stat-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 22px rgba(65, 76, 44, 0.07);
-        }
+    .dashboard-footer-note a:hover {
+        text-decoration: underline;
+    }
 
-        .stat-label {
-            color: var(--muted);
-            font-size: 13px;
-            line-height: 1.5;
-        }
+    /* Responsive dashboard */
 
-        .stat-value {
-            font-size: 29px;
-            font-weight: bold;
-            margin: 15px 0 8px;
-        }
-
-        .stat-note {
-            color: var(--muted);
-            font-size: 12px;
-            line-height: 1.5;
-        }
-
-        /* MANAGEMENT CARDS */
-
-        .management-grid {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 16px;
-        }
-
-        .management-card {
-            min-width: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .management-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 22px rgba(65, 76, 44, 0.08);
-        }
-
-        .card-icon {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
-            background: var(--cream);
-            color: var(--olive);
-            font-size: 25px;
-            margin-bottom: 16px;
-        }
-
-        .management-card h3 {
-            margin: 0 0 10px;
-            font-size: 17px;
-        }
-
-        .management-card p {
-            color: var(--muted);
-            font-size: 13px;
-            line-height: 1.7;
-            flex: 1;
-            margin: 0 0 18px;
-        }
-
-        .card-action {
-            margin-top: auto;
-        }
-
-        /* STATUS */
-
-        .status {
-            display: inline-block;
-            padding: 7px 10px;
-            border-radius: 20px;
-            background: #f0eee4;
-            color: var(--muted);
-            font-size: 11px;
-            font-weight: bold;
-        }
-
-        .status-pending {
-            background: var(--warning);
-            color: var(--warning-text);
-        }
-
-        .status-approved,
-        .status-verified {
-            background: var(--success);
-            color: var(--success-text);
-        }
-
-        .status-rejected,
-        .status-unpaid {
-            background: var(--danger);
-            color: var(--danger-text);
-        }
-
-        /* ALERTS */
-
-        .alert {
-            padding: 14px 18px;
-            border-radius: 10px;
-            margin-bottom: 15px;
-            line-height: 1.6;
-            font-size: 14px;
-        }
-
-        .alert-success {
-            background: var(--success);
-            color: var(--success-text);
-            border: 1px solid #c9e5cb;
-        }
-
-        .alert-error {
-            background: var(--danger);
-            color: var(--danger-text);
-            border: 1px solid #f0cbc7;
-        }
-
-        .alert-validation {
-            background: var(--warning);
-            color: var(--warning-text);
-            border: 1px solid #f0dfae;
-        }
-
-        /* APPLICATIONS */
-
-        .application-list {
-            display: grid;
-            gap: 18px;
-        }
-
-        .application-card {
-            scroll-margin-top: 20px;
-        }
-
-        .application-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 14px;
-            flex-wrap: wrap;
-            margin-bottom: 18px;
-        }
-
-        .application-header h3 {
-            margin: 0 0 7px;
-            font-size: 19px;
-            overflow-wrap: anywhere;
-        }
-
-        .muted {
-            color: var(--muted);
-            font-size: 13px;
-            line-height: 1.7;
-        }
-
-        .details-grid {
-            display: grid;
+    @media (max-width: 1150px) {
+        .dashboard-stats-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 18px;
-            margin-bottom: 18px;
         }
 
-        .detail-box {
-            background: #faf9f4;
-            border: 1px solid var(--border);
-            padding: 14px;
-            border-radius: 10px;
-            min-width: 0;
+        .dashboard-management-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 600px) {
+        .dashboard-stats-grid,
+        .dashboard-management-grid {
+            grid-template-columns: 1fr;
         }
 
-        .detail-label {
-            color: var(--muted);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-size: 10px;
-            font-weight: bold;
-            margin-bottom: 8px;
+        .dashboard-stat-card,
+        .dashboard-management-card {
+            padding: 20px;
         }
 
-        .detail-value {
-            font-size: 14px;
-            line-height: 1.7;
-            overflow-wrap: anywhere;
-            white-space: pre-line;
+        .dashboard-section-heading {
+            font-size: 21px;
         }
+    }
+</style>
+@endpush
 
-        .portfolio-link {
-            color: var(--olive);
-            font-weight: bold;
-        }
+@section('content')
 
-        .portfolio-link:hover {
-            color: var(--dark-olive);
-        }
+    {{-- SESSION MESSAGES --}}
 
-        .payment-box {
-            background: #f7f6ee;
-            border: 1px solid var(--border);
-            padding: 16px;
-            border-radius: 10px;
-            margin-top: 16px;
-            scroll-margin-top: 24px;
-        }
+    @if (session('success'))
+        <div class="dashboard-alert dashboard-alert-success" role="status">
+            {{ session('success') }}
+        </div>
+    @endif
 
-        .payment-box h4 {
-            margin: 0 0 16px;
-        }
+    @if (session('error'))
+        <div class="dashboard-alert dashboard-alert-error" role="alert">
+            {{ session('error') }}
+        </div>
+    @endif
 
-        .action-area {
-            border-top: 1px solid var(--border);
-            margin-top: 18px;
-            padding-top: 18px;
-        }
+    @if ($errors->any())
+        <div class="dashboard-alert dashboard-alert-validation" role="alert">
+            <strong>Please check the following:</strong>
 
-        .action-area h4 {
-            margin: 0 0 12px;
-        }
+            <ul>
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
 
-        .action-form {
-            margin-bottom: 18px;
-        }
 
-        .form-label {
-            display: block;
-            font-size: 12px;
-            font-weight: bold;
-            color: var(--muted);
-            margin-bottom: 7px;
-        }
+    {{-- PLATFORM OVERVIEW --}}
 
-        .admin-notes {
-            width: 100%;
-            min-height: 72px;
-            resize: vertical;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 11px;
-            font: inherit;
-            font-size: 13px;
-            margin-bottom: 10px;
-            background: #fff;
-            color: var(--dark-olive);
-        }
+    <section aria-labelledby="platform-overview-heading">
 
-        .admin-notes:focus {
-            outline: 2px solid #a6b27e;
-            outline-offset: 1px;
-        }
+        <h2 id="platform-overview-heading" class="dashboard-section-heading">
+            Platform Overview
+        </h2>
 
-        /* BUTTONS */
+        <div class="dashboard-stats-grid">
 
-        .button-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .button {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 7px;
-            border: 0;
-            border-radius: 8px;
-            padding: 11px 15px;
-            font-size: 13px;
-            font-weight: bold;
-            cursor: pointer;
-            text-decoration: none;
-            font-family: inherit;
-            line-height: 1.4;
-            transition: background 0.2s, transform 0.2s;
-        }
-
-        .button:hover {
-            transform: translateY(-1px);
-        }
-
-        .button-primary {
-            background: var(--olive);
-            color: white;
-        }
-
-        .button-primary:hover {
-            background: var(--dark-olive);
-        }
-
-        .button-danger {
-            background: var(--danger);
-            color: var(--danger-text);
-        }
-
-        .button-danger:hover {
-            background: #f4d5d1;
-        }
-
-        .button-outline {
-            background: white;
-            color: var(--olive);
-            border: 1px solid var(--border);
-        }
-
-        .button-outline:hover {
-            background: var(--cream);
-        }
-
-        .button:focus-visible,
-        .nav-link:focus-visible,
-        .back-link:focus-visible,
-        .logout-button:focus-visible {
-            outline: 2px solid #a6b27e;
-            outline-offset: 3px;
-        }
-
-        /* EMPTY STATES AND ACTIVITY */
-
-        .empty-state {
-            padding: 35px 20px;
-            text-align: center;
-            background: white;
-            border: 1px dashed #c8c9b7;
-            border-radius: 14px;
-        }
-
-        .empty-state h3 {
-            margin-top: 0;
-        }
-
-        .empty-state p {
-            color: var(--muted);
-            line-height: 1.7;
-            font-size: 14px;
-        }
-
-        .activity-panel p {
-            color: var(--muted);
-            font-size: 14px;
-            line-height: 1.7;
-        }
-
-        .activity-item {
-            padding: 14px 0;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .activity-item:first-child {
-            padding-top: 0;
-        }
-
-        .activity-item:last-child {
-            border-bottom: 0;
-            padding-bottom: 0;
-        }
-
-        .activity-item strong {
-            font-size: 14px;
-        }
-
-        .activity-heading {
-            display: flex;
-            justify-content: space-between;
-            gap: 12px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        .footer-note {
-            margin-top: 30px;
-            padding-top: 18px;
-            border-top: 1px solid var(--border);
-            color: var(--muted);
-            font-size: 12px;
-            line-height: 1.7;
-        }
-
-        /* RESPONSIVE */
-
-        @media (max-width: 1150px) {
-            .stats-grid {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-
-            .management-grid {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-
-            .main {
-                padding: 24px;
-            }
-        }
-
-        @media (max-width: 750px) {
-            .admin-layout {
-                display: block;
-            }
-
-            .sidebar {
-                width: 100%;
-                padding: 22px 16px;
-            }
-
-            .sidebar-subtitle {
-                margin-bottom: 20px;
-            }
-
-            .nav-label {
-                margin-top: 18px;
-            }
-
-            .main {
-                padding: 22px 14px;
-            }
-
-            .stats-grid,
-            .management-grid,
-            .details-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .stat-card,
-            .management-card,
-            .activity-panel,
-            .application-card {
-                padding: 18px;
-            }
-        }
-    </style>
-</head>
-
-<body>
-<div class="admin-layout">
-
-    {{-- SIDEBAR --}}
-
-    <aside class="sidebar">
-        <div class="brand">Art<span>fy.</span></div>
-        <div class="sidebar-subtitle">Gallery administration</div>
-
-        <div class="nav-label">Workspace</div>
-
-        <a href="#overview" class="nav-link active">
-            ⌂ &nbsp; Overview
-        </a>
-
-        <a href="#memberships" class="nav-link">
-            ♙ &nbsp; Artist Memberships
-        </a>
-
-        <a href="#payments" class="nav-link">
-            ৳ &nbsp; Payments
-        </a>
-
-        <a href="{{ route('admin.artworks.index') }}" class="nav-link">
-            ▧ &nbsp; All Artworks
-        </a>
-
-        <div class="nav-label">People</div>
-
-        <a href="{{ route('admin.artists.index') }}" class="nav-link">
-            ♙ &nbsp; All Artists
-        </a>
-
-        <a href="{{ route('admin.art-lovers.index') }}" class="nav-link">
-            ♧ &nbsp; All Art Lovers
-        </a>
-
-        <div class="nav-label">Reports</div>
-
-        <a href="#recent-activity" class="nav-link">
-            ▥ &nbsp; Recent Activity
-        </a>
-
-        <a href="{{ route('home') }}" class="back-link">
-            ← Back to Artfy
-        </a>
-
-        <form method="POST"
-              action="{{ route('logout') }}"
-              class="logout-form">
-            @csrf
-
-            <button type="submit" class="logout-button">
-                ↪ &nbsp; Log out
-            </button>
-        </form>
-    </aside>
-
-
-    {{-- MAIN DASHBOARD --}}
-
-    <main class="main">
-
-        <header class="topbar" id="overview">
-            <div>
-                <div class="eyebrow">Artfy / Administration</div>
-
-                <h1>Admin Dashboard</h1>
-
-                <div class="subtitle">
-                    Manage your gallery, artist memberships, payments,
-                    artworks and registered users from one place.
+            <article class="dashboard-stat-card">
+                <div class="dashboard-stat-label">
+                    Total Artist Applications
                 </div>
-            </div>
 
-            <div class="admin-badge">
-                Administrator: {{ auth()->user()->name }}
-            </div>
-        </header>
-
-
-        {{-- SUCCESS MESSAGE --}}
-
-        @if (session('success'))
-            <div class="alert alert-success">
-                {{ session('success') }}
-            </div>
-        @endif
-
-
-        {{-- ERROR MESSAGE --}}
-
-        @if (session('error'))
-            <div class="alert alert-error">
-                {{ session('error') }}
-            </div>
-        @endif
-
-
-        {{-- VALIDATION ERRORS --}}
-
-        @if ($errors->any())
-            <div class="alert alert-validation">
-                <strong>Please check the following:</strong>
-
-                <ul>
-                    @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
-
-
-        {{-- PLATFORM STATISTICS --}}
-
-        <h2 class="section-heading">Platform Overview</h2>
-
-        <div class="stats-grid">
-
-            <div class="stat-card">
-                <div class="stat-label">Total Artist Applications</div>
-
-                <div class="stat-value">
+                <div class="dashboard-stat-value">
                     {{ $totalApplications ?? 0 }}
                 </div>
 
-                <div class="stat-note">
+                <div class="dashboard-stat-note">
                     All submitted membership applications
                 </div>
-            </div>
+            </article>
 
-            <div class="stat-card">
-                <div class="stat-label">Pending Applications</div>
+            <article class="dashboard-stat-card">
+                <div class="dashboard-stat-label">
+                    Pending Applications
+                </div>
 
-                <div class="stat-value">
+                <div class="dashboard-stat-value">
                     {{ $pendingApplications ?? 0 }}
                 </div>
 
-                <div class="stat-note">
-                    Applications awaiting your decision
+                <div class="dashboard-stat-note">
+                    Awaiting your decision
                 </div>
-            </div>
+            </article>
 
-            <div class="stat-card">
-                <div class="stat-label">Payments to Verify</div>
+            <article class="dashboard-stat-card">
+                <div class="dashboard-stat-label">
+                    Payments to Verify
+                </div>
 
-                <div class="stat-value">
+                <div class="dashboard-stat-value">
                     {{ $paymentsToVerify ?? 0 }}
                 </div>
 
-                <div class="stat-note">
-                    Submitted payments awaiting verification
+                <div class="dashboard-stat-note">
+                    Membership payments awaiting verification
                 </div>
-            </div>
+            </article>
 
-            <div class="stat-card">
-                <div class="stat-label">Verified Payments</div>
+            <article class="dashboard-stat-card">
+                <div class="dashboard-stat-label">
+                    Verified Membership Payments
+                </div>
 
-                <div class="stat-value">
+                <div class="dashboard-stat-value">
                     {{ $totalPayments ?? 0 }}
                 </div>
 
-                <div class="stat-note">
-                    Payments verified by the administrator
+                <div class="dashboard-stat-note">
+                    Membership payments verified by an administrator
                 </div>
-            </div>
+            </article>
 
         </div>
+    </section>
 
 
-        {{-- QUICK ACCESS MANAGEMENT CENTRE --}}
+    {{-- MANAGEMENT CENTRE --}}
 
-        <h2 class="section-heading">Management Centre</h2>
+    <section aria-labelledby="management-centre-heading">
 
-        <p class="section-intro">
-            Choose a section below to open its dedicated management page.
+        <h2 id="management-centre-heading" class="dashboard-section-heading">
+            Management Centre
+        </h2>
+
+        <p class="dashboard-section-intro">
+            Choose a section to open its dedicated management page.
         </p>
 
-        <div class="management-grid">
+        <div class="dashboard-management-grid">
 
-            {{-- MEMBERSHIPS --}}
-
-            <section class="management-card">
-                <div class="card-icon">♙</div>
+            <article class="dashboard-management-card">
+                <div class="dashboard-card-icon" aria-hidden="true">♙</div>
 
                 <h3>Artist Memberships</h3>
 
                 <p>
-                    Review artist applications, biographies, portfolios
-                    and membership eligibility.
+                    Review artist applications, biographies, portfolios and
+                    membership eligibility.
                 </p>
 
-                <a href="#memberships"
-                   class="button button-primary card-action">
+                <a href="{{ route('admin.memberships.index') }}"
+                   class="dashboard-button">
                     View Applications →
                 </a>
-            </section>
+            </article>
 
 
-            {{-- PAYMENTS --}}
-
-            <section class="management-card">
-                <div class="card-icon">৳</div>
+            <article class="dashboard-management-card">
+                <div class="dashboard-card-icon" aria-hidden="true">৳</div>
 
                 <h3>Payment Verification</h3>
 
                 <p>
-                    Check submitted transaction IDs and verify payments
-                    for approved artist memberships.
+                    Check submitted transaction IDs and verify payments for
+                    approved memberships.
                 </p>
 
-                <a href="#payments"
-                   class="button button-primary card-action">
+                <a href="{{ route('admin.payments.index') }}"
+                   class="dashboard-button">
                     Review Payments →
                 </a>
-            </section>
+            </article>
 
 
-            {{-- ALL ARTWORKS --}}
+            <article class="dashboard-management-card">
+                <div class="dashboard-card-icon" aria-hidden="true">৳</div>
 
-            <section class="management-card">
-                <div class="card-icon">▧</div>
+                <h3>Sales &amp; Commission</h3>
+
+                <p>
+                    View verified artwork sales, total sales value, Artfy's
+                    recorded commission, artist earnings and the complete
+                    sales ledger.
+                </p>
+
+                <a href="{{ route('admin.sales.index') }}"
+                   class="dashboard-button">
+                    View Sales &amp; Commission →
+                </a>
+            </article>
+
+
+            <article class="dashboard-management-card">
+                <div class="dashboard-card-icon" aria-hidden="true">▧</div>
 
                 <h3>All Artworks</h3>
 
                 <p>
-                    Open artwork review to inspect submissions and
-                    approve or reject artworks.
+                    Inspect artwork submissions and approve or reject artworks.
                 </p>
 
                 <a href="{{ route('admin.artworks.index') }}"
-                   class="button button-primary card-action">
+                   class="dashboard-button">
                     Manage Artworks →
                 </a>
-            </section>
+            </article>
 
 
-            {{-- ALL ARTISTS --}}
-
-            <section class="management-card">
-                <div class="card-icon">♙</div>
+            <article class="dashboard-management-card">
+                <div class="dashboard-card-icon" aria-hidden="true">♙</div>
 
                 <h3>All Artists</h3>
 
                 <p>
-                    Browse registered artists, view their profile
-                    information and inspect their artwork.
+                    Browse registered artists and inspect their profiles.
                 </p>
 
                 <a href="{{ route('admin.artists.index') }}"
-                   class="button button-primary card-action">
+                   class="dashboard-button">
                     Manage Artists →
                 </a>
-            </section>
+            </article>
 
 
-            {{-- ALL ART LOVERS --}}
-
-            <section class="management-card">
-                <div class="card-icon">♧</div>
+            <article class="dashboard-management-card">
+                <div class="dashboard-card-icon" aria-hidden="true">♡</div>
 
                 <h3>All Art Lovers</h3>
 
                 <p>
-                    View registered art-lover accounts and open
-                    individual account details.
+                    View registered art-lover accounts and their details.
                 </p>
 
                 <a href="{{ route('admin.art-lovers.index') }}"
-                   class="button button-primary card-action">
+                   class="dashboard-button">
                     Manage Art Lovers →
                 </a>
-            </section>
+            </article>
 
 
-            {{-- ACTIVITY --}}
+            <article class="dashboard-management-card">
+                <div class="dashboard-card-icon" aria-hidden="true">▤</div>
 
-            <section class="management-card">
-                <div class="card-icon">▥</div>
-
-                <h3>Reports & Activity</h3>
+                <h3>Reports &amp; Activity</h3>
 
                 <p>
-                    Review recent membership submissions, application
-                    decisions and payment statuses.
+                    Review membership totals, payment statuses and recent
+                    application records.
                 </p>
 
-                <a href="#recent-activity"
-                   class="button button-primary card-action">
-                    View Activity →
+                <a href="{{ route('admin.reports.index') }}"
+                   class="dashboard-button">
+                    View Reports →
                 </a>
-            </section>
+            </article>
 
         </div>
+    </section>
 
 
-        {{-- MEMBERSHIP APPLICATIONS --}}
+    <footer class="dashboard-footer-note">
+        Artfy Administration · Manage your gallery responsibly.
 
-        <h2 class="section-heading" id="memberships">
-            Artist Membership Applications
-        </h2>
+        <a href="{{ route('home') }}">
+            Return to Discover
+        </a>
+    </footer>
 
-        <p class="section-intro">
-            Review artist details, approve or reject applications,
-            and inspect the submitted payment information.
-        </p>
-
-
-        @if (isset($applications) && $applications->isNotEmpty())
-
-            <div class="application-list">
-
-                @foreach ($applications as $application)
-
-                    <section class="application-card"
-                             id="application-{{ $application->id }}">
-
-                        <div class="application-header">
-
-                            <div>
-                                <h3>{{ $application->artist_name }}</h3>
-
-                                <div class="muted">
-                                    Application #{{ $application->id }}
-                                    · Submitted
-                                    {{ $application->created_at
-                                        ? $application->created_at->format('d M Y, h:i A')
-                                        : 'Date unavailable' }}
-                                </div>
-
-                                <div class="muted">
-                                    Account:
-                                    {{ $application->user->name ?? 'Unknown user' }}
-
-                                    @if ($application->user?->email)
-                                        · {{ $application->user->email }}
-                                    @endif
-                                </div>
-                            </div>
-
-                            <div>
-                                @php
-                                    $applicationStatus =
-                                        $application->status ?? 'pending';
-
-                                    $applicationStatusClass = in_array(
-                                        $applicationStatus,
-                                        ['pending', 'approved', 'rejected']
-                                    ) ? $applicationStatus : 'pending';
-                                @endphp
-
-                                <span class="status status-{{ $applicationStatusClass }}">
-                                    {{ ucfirst($applicationStatus) }}
-                                </span>
-                            </div>
-
-                        </div>
-
-
-                        {{-- ARTIST DETAILS --}}
-
-                        <div class="details-grid">
-
-                            <div class="detail-box">
-                                <div class="detail-label">Biography</div>
-
-                                <div class="detail-value">
-                                    {{ $application->biography ?: 'Not provided' }}
-                                </div>
-                            </div>
-
-
-                            <div class="detail-box">
-                                <div class="detail-label">Art Categories</div>
-
-                                @php
-                                    $categories = $application->art_categories ?? [];
-
-                                    if (is_string($categories)) {
-                                        $decodedCategories = json_decode(
-                                            $categories,
-                                            true
-                                        );
-
-                                        $categories = is_array($decodedCategories)
-                                            ? $decodedCategories
-                                            : [];
-                                    }
-
-                                    if (
-                                        empty($categories)
-                                        && $application->art_category
-                                    ) {
-                                        $categories = [
-                                            $application->art_category
-                                        ];
-                                    }
-
-                                    if (!is_array($categories)) {
-                                        $categories = [];
-                                    }
-                                @endphp
-
-                                <div class="detail-value">
-                                    {{ !empty($categories)
-                                        ? implode(', ', $categories)
-                                        : 'Not specified' }}
-                                </div>
-                            </div>
-
-
-                            <div class="detail-box">
-                                <div class="detail-label">Portfolio</div>
-
-                                <div class="detail-value">
-                                    @if ($application->portfolio_url)
-                                        <a class="portfolio-link"
-                                           href="{{ $application->portfolio_url }}"
-                                           target="_blank"
-                                           rel="noopener noreferrer">
-                                            Open artist portfolio ↗
-                                        </a>
-                                    @else
-                                        Not provided
-                                    @endif
-                                </div>
-                            </div>
-
-
-                            <div class="detail-box">
-                                <div class="detail-label">Annual Membership Fee</div>
-
-                                <div class="detail-value">
-                                    ৳{{ number_format(
-                                        (float) ($application->membership_fee ?? 1000)
-                                    ) }}
-                                    / year
-                                </div>
-                            </div>
-
-                        </div>
-
-
-                        {{-- PAYMENT INFORMATION --}}
-
-                        <div class="payment-box">
-
-                            <h4 id="payments">Payment Information</h4>
-
-                            <div class="details-grid">
-
-                                <div>
-                                    <div class="detail-label">Payment Status</div>
-
-                                    @php
-                                        $paymentStatus =
-                                            $application->payment_status ?? 'unpaid';
-
-                                        $paymentStatusClass = in_array(
-                                            $paymentStatus,
-                                            ['pending', 'verified', 'unpaid']
-                                        ) ? $paymentStatus : 'unpaid';
-                                    @endphp
-
-                                    <span class="status status-{{ $paymentStatusClass }}">
-                                        {{ ucfirst($paymentStatus) }}
-                                    </span>
-                                </div>
-
-
-                                <div>
-                                    <div class="detail-label">Payment Method</div>
-
-                                    <div class="detail-value">
-                                        {{ $application->payment_method
-                                            ? ucfirst($application->payment_method)
-                                            : 'Manual' }}
-                                    </div>
-                                </div>
-
-
-                                <div>
-                                    <div class="detail-label">Transaction ID</div>
-
-                                    <div class="detail-value">
-                                        @if ($application->payment_reference)
-                                            <strong>
-                                                {{ $application->payment_reference }}
-                                            </strong>
-                                        @else
-                                            <span class="muted">
-                                                No transaction ID submitted yet.
-                                            </span>
-                                        @endif
-                                    </div>
-                                </div>
-
-
-                                <div>
-                                    <div class="detail-label">Payment Submitted</div>
-
-                                    <div class="detail-value">
-                                        {{ $application->payment_submitted_at
-                                            ? $application->payment_submitted_at->format('d M Y, h:i A')
-                                            : 'Not submitted' }}
-                                    </div>
-                                </div>
-
-                            </div>
-
-
-                            @if ($application->payment_verified_at)
-                                <div class="muted">
-                                    Verified on
-                                    {{ $application->payment_verified_at->format('d M Y, h:i A') }}
-                                </div>
-                            @endif
-
-
-                            {{-- VERIFY PAYMENT --}}
-
-                            @if (
-                                $application->status === 'approved'
-                                && $application->payment_status === 'pending'
-                                && filled($application->payment_reference)
-                            )
-
-                                <form method="POST"
-                                      action="{{ route(
-                                          'admin.memberships.verify-payment',
-                                          $application
-                                      ) }}"
-                                      onsubmit="return confirm('Have you checked the transaction? Verify this payment now?');"
-                                      style="margin-top: 15px;">
-
-                                    @csrf
-
-                                    <button type="submit"
-                                            class="button button-primary">
-                                        Verify Payment
-                                    </button>
-
-                                </form>
-
-                            @elseif ($application->payment_status === 'verified')
-
-                                <p class="muted">
-                                    Payment verified successfully.
-                                </p>
-
-                            @elseif (
-                                $application->status !== 'approved'
-                                && $application->payment_reference
-                            )
-
-                                <p class="muted">
-                                    Membership must be approved before
-                                    payment verification is available.
-                                </p>
-
-                            @else
-
-                                <p class="muted">
-                                    Waiting for the artist to submit a transaction ID.
-                                </p>
-
-                            @endif
-
-                        </div>
-
-
-                        {{-- APPROVAL AND REJECTION --}}
-
-                        <div class="action-area">
-
-                            @if ($application->status === 'pending')
-
-                                <h4>Review Application</h4>
-
-                                <p class="muted">
-                                    Review the artist's information before
-                                    making a membership decision.
-                                </p>
-
-
-                                {{-- APPROVE APPLICATION --}}
-
-                                <form method="POST"
-                                      action="{{ route(
-                                          'admin.memberships.approve',
-                                          $application
-                                      ) }}"
-                                      class="action-form"
-                                      onsubmit="return confirm('Approve this artist membership application?');">
-
-                                    @csrf
-
-                                    <label class="form-label"
-                                           for="approve-notes-{{ $application->id }}">
-                                        Admin notes (optional)
-                                    </label>
-
-                                    <textarea
-                                        class="admin-notes"
-                                        id="approve-notes-{{ $application->id }}"
-                                        name="admin_notes"
-                                        maxlength="2000"
-                                        placeholder="Optional notes for this application..."
-                                    ></textarea>
-
-                                    <button type="submit"
-                                            class="button button-primary">
-                                        Approve Membership
-                                    </button>
-
-                                </form>
-
-
-                                {{-- REJECT APPLICATION --}}
-
-                                <form method="POST"
-                                      action="{{ route(
-                                          'admin.memberships.reject',
-                                          $application
-                                      ) }}"
-                                      class="action-form"
-                                      onsubmit="return confirm('Reject this artist membership application?');">
-
-                                    @csrf
-
-                                    <label class="form-label"
-                                           for="reject-notes-{{ $application->id }}">
-                                        Reason for rejection (required)
-                                    </label>
-
-                                    <textarea
-                                        class="admin-notes"
-                                        id="reject-notes-{{ $application->id }}"
-                                        name="admin_notes"
-                                        maxlength="2000"
-                                        required
-                                        placeholder="Explain why this application is being rejected..."
-                                    ></textarea>
-
-                                    <button type="submit"
-                                            class="button button-danger">
-                                        Reject Application
-                                    </button>
-
-                                </form>
-
-
-                            @elseif ($application->status === 'approved')
-
-                                <h4>Membership Approved</h4>
-
-                                <p class="muted">
-                                    This artist's membership application
-                                    has been approved.
-
-                                    @if ($application->payment_status === 'verified')
-                                        Payment is verified. The artist meets
-                                        the membership and payment requirements
-                                        for Artist Studio access.
-                                    @else
-                                        Payment verification is still required
-                                        before Artist Studio access is granted.
-                                    @endif
-                                </p>
-
-
-                            @elseif ($application->status === 'rejected')
-
-                                <h4>Application Rejected</h4>
-
-                                <p class="muted">
-                                    This application has already been rejected.
-                                </p>
-
-                            @endif
-
-
-                            @if ($application->admin_notes)
-                                <div class="detail-box">
-                                    <div class="detail-label">Admin Notes</div>
-
-                                    <div class="detail-value">
-                                        {{ $application->admin_notes }}
-                                    </div>
-                                </div>
-                            @endif
-
-                        </div>
-
-                    </section>
-
-                @endforeach
-
-            </div>
-
-        @else
-
-            <div class="empty-state">
-                <h3>No Artist Applications Yet</h3>
-
-                <p>
-                    When an artist submits a membership application,
-                    their information will appear here automatically.
-                </p>
-            </div>
-
-        @endif
-
-
-        {{-- RECENT MEMBERSHIP ACTIVITY --}}
-
-        <h2 class="section-heading" id="recent-activity">
-            Recent Membership Activity
-        </h2>
-
-        <div class="activity-panel">
-
-            @if (isset($applications) && $applications->isNotEmpty())
-
-                @foreach ($applications->take(5) as $application)
-
-                    <div class="activity-item">
-
-                        <div class="activity-heading">
-                            <strong>
-                                {{ $application->artist_name }}
-                            </strong>
-
-                            <span class="status status-{{ in_array(
-                                $application->status ?? 'pending',
-                                ['pending', 'approved', 'rejected']
-                            ) ? $application->status : 'pending' }}">
-                                {{ ucfirst($application->status ?? 'pending') }}
-                            </span>
-                        </div>
-
-                        <div class="muted">
-                            Application #{{ $application->id }}
-
-                            · Membership:
-                            {{ ucfirst($application->status ?? 'pending') }}
-
-                            · Payment:
-                            {{ ucfirst($application->payment_status ?? 'unpaid') }}
-                        </div>
-
-                        <div class="muted">
-                            Submitted
-                            {{ $application->created_at
-                                ? $application->created_at->format('d M Y, h:i A')
-                                : 'Date unavailable' }}
-                        </div>
-
-                    </div>
-
-                @endforeach
-
-            @else
-
-                <p>
-                    No membership activity is available yet.
-                    New artist applications will appear here.
-                </p>
-
-            @endif
-
-        </div>
-
-
-        {{-- FOOTER --}}
-
-        <div class="footer-note">
-            Artfy Administration · Manage your gallery responsibly.
-            <a href="{{ route('home') }}"
-               class="portfolio-link">
-                Return to Discover
-            </a>
-        </div>
-
-    </main>
-</div>
-</body>
-</html>
+@endsection

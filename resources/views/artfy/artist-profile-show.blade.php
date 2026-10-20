@@ -1,9 +1,45 @@
-
-@extends('artfy.layout')
+@extends(($adminPreview ?? false) ? 'artfy.admin-artist-layout' : 'artfy.layout')
 
 @section('title', ($profile?->artist_name ?: $user->name) . ' | Artfy')
 
 @section('content')
+
+@php
+    $artistName = $profile?->artist_name ?: $user->name;
+    $isAdminPreview = $adminPreview ?? false;
+
+    $allArtworks = $artworks ?? collect();
+
+    // Use the controller's collections when available.
+    // Fallbacks also support the admin's artist-profile preview.
+    $soldArtworks = $soldArtworks ?? $allArtworks->filter(function ($artwork) {
+        return (bool) $artwork->is_sold
+            || $artwork->status === 'sold';
+    })->values();
+
+    $availableArtworks = $availableArtworks ?? $allArtworks->filter(function ($artwork) {
+        return !(bool) $artwork->is_sold
+            && $artwork->status === 'available'
+            && $artwork->moderation_status === 'approved';
+    })->values();
+
+    $otherArtworks = $otherArtworks ?? $allArtworks->filter(function ($artwork) {
+        $isSold = (bool) $artwork->is_sold
+            || $artwork->status === 'sold';
+
+        $isAvailable = !(bool) $artwork->is_sold
+            && $artwork->status === 'available'
+            && $artwork->moderation_status === 'approved';
+
+        return !$isSold && !$isAvailable;
+    })->values();
+
+    $totalSales = $totalSales ?? 0;
+
+    $artworkCount = $allArtworks->count();
+    $availableCount = $availableArtworks->count();
+    $soldCount = $soldArtworks->count();
+@endphp
 
 <style>
     .artist-profile-page {
@@ -176,6 +212,7 @@
 
     .artist-portfolio {
         margin-top: 48px;
+        scroll-margin-top: 30px;
     }
 
     .artist-portfolio-header {
@@ -199,6 +236,27 @@
         font-family: 'Playfair Display', Georgia, serif;
         font-size: clamp(26px, 3vw, 36px);
         font-weight: 500;
+    }
+
+    .artist-portfolio-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 24px;
+    }
+
+    .artist-portfolio-tabs a {
+        display: inline-block;
+        padding: 10px 15px;
+        border: 1px solid #d5d2c6;
+        color: #414c2c;
+        font-size: 12px;
+        text-decoration: none;
+        transition: background .2s ease;
+    }
+
+    .artist-portfolio-tabs a:hover {
+        background: #eeede5;
     }
 
     .artist-artwork-grid {
@@ -247,6 +305,33 @@
         text-align: center;
     }
 
+    .artist-sold-badge {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        z-index: 2;
+        padding: 8px 12px;
+        background: #414c2c;
+        color: #fff;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+    }
+
+    .artist-pending-badge {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        z-index: 2;
+        padding: 8px 12px;
+        background: #f8f6f2;
+        color: #414c2c;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: .5px;
+    }
+
     .artist-artwork-info {
         padding-top: 13px;
     }
@@ -262,6 +347,7 @@
         margin: 0;
         color: #77776d;
         font-size: 12px;
+        line-height: 1.6;
     }
 
     .artist-artwork-price {
@@ -269,6 +355,13 @@
         margin-top: 9px;
         font-size: 14px;
         font-weight: 600;
+    }
+
+    .artist-other-status {
+        display: block;
+        margin-top: 8px;
+        color: #72795f;
+        font-size: 11px;
     }
 
     .artist-empty-portfolio {
@@ -289,6 +382,7 @@
         margin: 0 0 20px;
         color: #77776d;
         font-size: 13px;
+        line-height: 1.7;
     }
 
     @media (max-width: 760px) {
@@ -355,12 +449,6 @@
     }
 </style>
 
-@php
-    $artistName = $profile?->artist_name ?: $user->name;
-    $artworkCount = $artworks->count();
-    $isAdminPreview = $adminPreview ?? false;
-@endphp
-
 <div class="artist-profile-page">
 
     {{-- Cover banner --}}
@@ -371,7 +459,9 @@
                 alt="{{ $artistName }} cover photo"
             >
         @else
-            <div class="artist-cover-placeholder">A space for creativity</div>
+            <div class="artist-cover-placeholder">
+                A space for creativity
+            </div>
         @endif
     </section>
 
@@ -405,18 +495,24 @@
 
         <div class="artist-profile-actions">
             @if ($isAdminPreview)
-                <a class="button button-outline"
-                   href="{{ route('admin.artists.index') }}">
+                <a
+                    class="button button-outline"
+                    href="{{ route('admin.artists.index') }}"
+                >
                     ← Back to Artists
                 </a>
             @else
-                <a class="button button-outline"
-                   href="{{ route('artist-profile.edit') }}">
+                <a
+                    class="button button-outline"
+                    href="{{ route('artist-profile.edit') }}"
+                >
                     Edit Profile
                 </a>
 
-                <a class="button button-dark"
-                   href="{{ route('artist.artworks.create') }}">
+                <a
+                    class="button button-dark"
+                    href="{{ route('artist.artworks.create') }}"
+                >
                     + Add Your Work
                 </a>
             @endif
@@ -428,8 +524,9 @@
         <p class="artist-bio">{{ $profile->bio }}</p>
     @else
         <p class="artist-bio">
-            Welcome to my Artfy profile. This is where I share my artistic journey and original work.
-            You can edit your profile to tell visitors more about yourself.
+            Welcome to my Artfy profile. This is where I share my artistic
+            journey and original work. You can edit your profile to tell
+            visitors more about yourself.
         </p>
     @endif
 
@@ -448,17 +545,29 @@
     <div class="artist-stats">
         <div class="artist-stat">
             <strong>{{ $artworkCount }}</strong>
-            <span>Artworks</span>
+            <span>Total Artworks</span>
         </div>
 
         <div class="artist-stat">
-            <strong>{{ $profile?->art_category ? 1 : 0 }}</strong>
-            <span>Art Categories</span>
+            <strong>{{ $availableCount }}</strong>
+            <span>Available</span>
         </div>
+
+        <div class="artist-stat">
+            <strong>{{ $soldCount }}</strong>
+            <span>Sold Out</span>
+        </div>
+
+        @unless ($isAdminPreview)
+            <div class="artist-stat">
+                <strong>{{ $totalSales }}</strong>
+                <span>Confirmed Sales</span>
+            </div>
+        @endunless
     </div>
 
     {{-- Artwork portfolio --}}
-    <section class="artist-portfolio">
+    <section class="artist-portfolio" id="my-artworks">
         <div class="artist-portfolio-header">
             <div>
                 <div class="eyebrow">THE COLLECTION</div>
@@ -466,74 +575,231 @@
             </div>
 
             @unless ($isAdminPreview)
-                <a class="button button-dark"
-                   href="{{ route('artist.artworks.create') }}">
+                <a
+                    class="button button-dark"
+                    href="{{ route('artist.artworks.create') }}"
+                >
                     Add Your Work →
                 </a>
             @endunless
         </div>
 
-        @if ($artworks->isNotEmpty())
-            <div class="artist-artwork-grid">
-                @foreach ($artworks as $artwork)
-                    <a
-                        class="artist-artwork-card"
-                        href="{{ route('artworks.show', ['slug' => 'uploaded-' . $artwork->id]) }}"
-                    >
-                        <div class="artist-artwork-image">
-                            @if ($artwork->image)
-                                <img
-                                    src="{{ asset('storage/' . $artwork->image) }}"
-                                    alt="{{ $artwork->title }}"
-                                    loading="lazy"
-                                >
-                            @else
-                                <div class="artist-artwork-image-placeholder">
-                                    {{ $artwork->title }}
-                                </div>
-                            @endif
-                        </div>
+        {{-- Quick links to the artwork sections --}}
+        <nav class="artist-portfolio-tabs" aria-label="Artwork sections">
+            <a href="#available-artworks">
+                Available ({{ $availableCount }})
+            </a>
 
-                        <div class="artist-artwork-info">
-                            <h3>{{ $artwork->title }}</h3>
+            <a href="#sold-artworks">
+                Sold Out ({{ $soldCount }})
+            </a>
 
-                            <p>
-                                {{ $artwork->category ?: 'Original artwork' }}
-                                @if ($artwork->medium)
-                                    · {{ $artwork->medium }}
+            @if ($otherArtworks->isNotEmpty())
+                <a href="#other-artworks">
+                    Pending / Unavailable ({{ $otherArtworks->count() }})
+                </a>
+            @endif
+        </nav>
+
+        {{-- AVAILABLE ARTWORKS --}}
+        <section class="artist-portfolio" id="available-artworks">
+            <div class="artist-portfolio-header">
+                <div>
+                    <div class="eyebrow">READY FOR COLLECTORS</div>
+                    <h2>Available Artworks</h2>
+                </div>
+            </div>
+
+            @if ($availableArtworks->isNotEmpty())
+                <div class="artist-artwork-grid">
+                    @foreach ($availableArtworks as $artwork)
+                        <a
+                            class="artist-artwork-card"
+                            href="{{ route('artworks.show', ['slug' => 'uploaded-' . $artwork->id]) }}"
+                        >
+                            <div class="artist-artwork-image">
+                                @if ($artwork->image)
+                                    <img
+                                        src="{{ asset('storage/' . $artwork->image) }}"
+                                        alt="{{ $artwork->title }}"
+                                        loading="lazy"
+                                    >
+                                @else
+                                    <div class="artist-artwork-image-placeholder">
+                                        {{ $artwork->title }}
+                                    </div>
                                 @endif
-                            </p>
+                            </div>
 
-                            @if (!is_null($artwork->price))
-                                <span class="artist-artwork-price">
-                                    ${{ number_format((float) $artwork->price, 2) }}
+                            <div class="artist-artwork-info">
+                                <h3>{{ $artwork->title }}</h3>
+
+                                <p>
+                                    {{ $artwork->category ?: 'Original artwork' }}
+                                    @if ($artwork->medium)
+                                        · {{ $artwork->medium }}
+                                    @endif
+                                </p>
+
+                                @if (!is_null($artwork->price))
+                                    <span class="artist-artwork-price">
+                                        ৳{{ number_format((float) $artwork->price, 2) }}
+                                    </span>
+                                @else
+                                    <span class="artist-other-status">
+                                        Price not listed
+                                    </span>
+                                @endif
+                            </div>
+                        </a>
+                    @endforeach
+                </div>
+            @else
+                <div class="artist-empty-portfolio">
+                    <h3>No available artworks right now</h3>
+                    <p>
+                        When your approved artworks are available for purchase,
+                        they will appear in this section.
+                    </p>
+
+                    @unless ($isAdminPreview)
+                        <a
+                            class="button button-dark"
+                            href="{{ route('artist.artworks.create') }}"
+                        >
+                            Add Your Work →
+                        </a>
+                    @endunless
+                </div>
+            @endif
+        </section>
+
+        {{-- SOLD OUT ARTWORKS --}}
+        <section class="artist-portfolio" id="sold-artworks">
+            <div class="artist-portfolio-header">
+                <div>
+                    <div class="eyebrow">COLLECTED AND SOLD</div>
+                    <h2>Sold Out</h2>
+                </div>
+            </div>
+
+            @if ($soldArtworks->isNotEmpty())
+                <div class="artist-artwork-grid">
+                    @foreach ($soldArtworks as $artwork)
+                        <a
+                            class="artist-artwork-card"
+                            href="{{ route('artworks.show', ['slug' => 'uploaded-' . $artwork->id]) }}"
+                        >
+                            <div class="artist-artwork-image">
+                                @if ($artwork->image)
+                                    <img
+                                        src="{{ asset('storage/' . $artwork->image) }}"
+                                        alt="{{ $artwork->title }}"
+                                        loading="lazy"
+                                    >
+                                @else
+                                    <div class="artist-artwork-image-placeholder">
+                                        {{ $artwork->title }}
+                                    </div>
+                                @endif
+
+                                <span class="artist-sold-badge">
+                                    Sold Out
                                 </span>
-                            @endif
-                        </div>
-                    </a>
-                @endforeach
-            </div>
-        @else
-            <div class="artist-empty-portfolio">
-                <h3>
-                    {{ $isAdminPreview
-                        ? 'This artist has not uploaded any artworks yet.'
-                        : 'Your artistic journey starts here.' }}
-                </h3>
+                            </div>
 
-                <p>
-                    {{ $isAdminPreview
-                        ? 'The artist’s uploaded artworks will appear here.'
-                        : 'Your uploaded artworks will appear here for visitors to explore.' }}
-                </p>
+                            <div class="artist-artwork-info">
+                                <h3>{{ $artwork->title }}</h3>
 
-                @unless ($isAdminPreview)
-                    <a class="button button-dark"
-                       href="{{ route('artist.artworks.create') }}">
-                        Upload Your First Artwork →
-                    </a>
-                @endunless
-            </div>
+                                <p>
+                                    {{ $artwork->category ?: 'Original artwork' }}
+                                    @if ($artwork->medium)
+                                        · {{ $artwork->medium }}
+                                    @endif
+                                </p>
+
+                                @if (!is_null($artwork->price))
+                                    <span class="artist-artwork-price">
+                                        ৳{{ number_format((float) $artwork->price, 2) }}
+                                    </span>
+                                @endif
+
+                                <span class="artist-other-status">
+                                    This artwork has been sold and is no longer available.
+                                </span>
+                            </div>
+                        </a>
+                    @endforeach
+                </div>
+            @else
+                <div class="artist-empty-portfolio">
+                    <h3>No artworks sold yet</h3>
+                    <p>
+                        When a buyer completes a purchase and the payment is
+                        verified, that artwork will appear here automatically.
+                    </p>
+                </div>
+            @endif
+        </section>
+
+        {{-- PENDING OR OTHERWISE UNAVAILABLE ARTWORKS --}}
+        @if ($otherArtworks->isNotEmpty())
+            <section class="artist-portfolio" id="other-artworks">
+                <div class="artist-portfolio-header">
+                    <div>
+                        <div class="eyebrow">UNDER REVIEW OR UNAVAILABLE</div>
+                        <h2>Pending / Unavailable</h2>
+                    </div>
+                </div>
+
+                <div class="artist-artwork-grid">
+                    @foreach ($otherArtworks as $artwork)
+                        <a
+                            class="artist-artwork-card"
+                            href="{{ route('artworks.show', ['slug' => 'uploaded-' . $artwork->id]) }}"
+                        >
+                            <div class="artist-artwork-image">
+                                @if ($artwork->image)
+                                    <img
+                                        src="{{ asset('storage/' . $artwork->image) }}"
+                                        alt="{{ $artwork->title }}"
+                                        loading="lazy"
+                                    >
+                                @else
+                                    <div class="artist-artwork-image-placeholder">
+                                        {{ $artwork->title }}
+                                    </div>
+                                @endif
+
+                                <span class="artist-pending-badge">
+                                    {{ ucfirst(str_replace('_', ' ', $artwork->moderation_status ?: $artwork->status ?: 'Unavailable')) }}
+                                </span>
+                            </div>
+
+                            <div class="artist-artwork-info">
+                                <h3>{{ $artwork->title }}</h3>
+
+                                <p>
+                                    {{ $artwork->category ?: 'Original artwork' }}
+                                    @if ($artwork->medium)
+                                        · {{ $artwork->medium }}
+                                    @endif
+                                </p>
+
+                                @if (!is_null($artwork->price))
+                                    <span class="artist-artwork-price">
+                                        ৳{{ number_format((float) $artwork->price, 2) }}
+                                    </span>
+                                @endif
+
+                                <span class="artist-other-status">
+                                    This artwork is not currently available for purchase.
+                                </span>
+                            </div>
+                        </a>
+                    @endforeach
+                </div>
+            </section>
         @endif
     </section>
 

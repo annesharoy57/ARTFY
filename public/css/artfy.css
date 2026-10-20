@@ -3123,3 +3123,36 @@ body.auth-modal-open {
 .auth-role-card[hidden] {
     display: none !important;
 }
+
+/* Artist-uploaded artwork: detail and checkout pages */
+.detail-art:has(.detail-uploaded-image),
+.artwork-art:has(.detail-uploaded-image) {
+    overflow: hidden;
+    padding: 0;
+    border: none;
+    background: #f8f6f2;
+}
+
+/* Remove decorative shapes behind or over the real image */
+.detail-art:has(.detail-uploaded-image)::before,
+.detail-art:has(.detail-uploaded-image)::after,
+.artwork-art:has(.detail-uploaded-image)::before,
+.artwork-art:has(.detail-uploaded-image)::after {
+    content: none !important;
+    display: none !important;
+}
+
+/* Display the uploaded image at the correct size */
+.detail-art:has(.detail-uploaded-image) .detail-uploaded-image,
+.artwork-art:has(.detail-uploaded-image) .detail-uploaded-image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    object-position: center;
+    border: none;
+    box-shadow: none;
+    background: #f8f6f2;
+}
