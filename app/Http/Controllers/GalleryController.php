@@ -11,24 +11,23 @@ class GalleryController extends Controller
 {
     /**
      * Discover homepage.
-     * Keep the existing homepage structure and sample content.
+     * Uses real, approved database content only.
      */
     public function home(): View
     {
-        $artworks = array_merge(
-            $this->publicArtworkCollection(),
-            array_slice($this->artworkCollection(), 0, 3)
-        );
-
         return view('artfy.home', [
-            'artworks' => array_slice($artworks, 0, 3),
+            'artworks' => array_slice(
+                $this->publicArtworkCollection(),
+                0,
+                3
+            ),
             'artists' => $this->artistCollection(),
             'exhibitions' => $this->exhibitionCollection(),
         ]);
     }
 
     /**
-     * Explore artworks with combined search, art type, budget and sorting.
+     * Explore artworks with search, art type, price and sorting.
      */
     public function artworks(Request $request): View
     {
@@ -54,10 +53,7 @@ class GalleryController extends Controller
             $sort = 'latest';
         }
 
-        $artworks = array_merge(
-            $this->publicArtworkCollection(),
-            $this->artworkCollection()
-        );
+        $artworks = $this->publicArtworkCollection();
 
         $artworks = array_values(array_filter(
             $artworks,
@@ -148,6 +144,7 @@ class GalleryController extends Controller
         foreach ($artworks as &$artwork) {
             unset($artwork['_created_at']);
         }
+
         unset($artwork);
 
         return view('artfy.listing', [
@@ -164,7 +161,7 @@ class GalleryController extends Controller
     }
 
     /**
-     * Match one combined art-type dropdown against category and medium.
+     * Match the art-type dropdown against category and medium.
      */
     private function matchesArtType(
         array $artwork,
@@ -242,7 +239,7 @@ class GalleryController extends Controller
     }
 
     /**
-     * Artists listing.
+     * List artists with approved applications and verified payments.
      */
     public function artists(): View
     {
@@ -256,7 +253,8 @@ class GalleryController extends Controller
     }
 
     /**
-     * Exhibitions listing.
+     * Display exhibitions.
+     * No exhibition database model is connected yet.
      */
     public function exhibitions(): View
     {
@@ -270,61 +268,54 @@ class GalleryController extends Controller
     }
 
     /**
-     * Artwork details.
-     * Uploaded artworks are visible only after admin approval.
+     * Display an approved artwork.
+     *
+     * Available and sold artworks remain viewable.
+     * A separate purchase workflow must prevent buying sold items.
      */
     public function artwork(string $slug): View
     {
-        if (preg_match('/^uploaded-(\d+)$/', $slug, $matches)) {
-            $uploadedArtwork = Artwork::with('artist.artistProfile')
-                ->where('status', 'available')
-                ->where('moderation_status', 'approved')
-                ->find((int) $matches[1]);
-
-            abort_unless($uploadedArtwork, 404);
-
-            $artist = $uploadedArtwork->artist;
-            $profile = $artist?->artistProfile;
-
-            $artwork = [
-                'slug' => 'uploaded-' . $uploadedArtwork->id,
-                'title' => $uploadedArtwork->title,
-                'description' => $uploadedArtwork->description
-                    ?: 'Explore this original artwork on Artfy.',
-                'artist' => $profile?->artist_name
-                    ?: ($artist?->name ?? 'Artfy Artist'),
-                'artist_slug' => $artist
-                    ? 'artist-' . $artist->id
-                    : null,
-                'category' => $uploadedArtwork->category ?: 'Other',
-                'type' => $uploadedArtwork->medium ?: 'Not specified',
-                'price' => $uploadedArtwork->price,
-                'likes' => 0,
-                'color' => 'green',
-                'image' => $uploadedArtwork->image,
-                'is_uploaded' => true,
-            ];
-
-            return view('artfy.detail', [
-                'title' => $artwork['title'],
-                'eyebrow' => 'Original artwork',
-                'description' => $artwork['description'],
-                'item' => $artwork,
-                'pageType' => 'artwork',
-            ]);
+        if (!preg_match('/^uploaded-(\d+)$/', $slug, $matches)) {
+            abort(404);
         }
 
-        // Preserve existing sample artwork URLs.
-        $artwork = collect($this->artworkCollection())
-            ->firstWhere('slug', $slug);
+        // FIX: Allow both available and sold artworks to be viewed.
+        $uploadedArtwork = Artwork::with('artist.artistProfile')
+            ->whereIn('status', ['available', 'sold'])
+            ->where('moderation_status', 'approved')
+            ->find((int) $matches[1]);
 
-        abort_unless($artwork, 404);
+        abort_unless($uploadedArtwork, 404);
 
-        $artwork['is_uploaded'] = false;
+        $artist = $uploadedArtwork->artist;
+        $profile = $artist?->artistProfile;
+
+        $artwork = [
+            'slug' => 'uploaded-' . $uploadedArtwork->id,
+            'title' => $uploadedArtwork->title,
+            'description' => $uploadedArtwork->description
+                ?: 'Explore this original artwork on Artfy.',
+            'artist' => $profile?->artist_name
+                ?: ($artist?->name ?? 'Artfy Artist'),
+            'artist_slug' => $artist
+                ? 'artist-' . $artist->id
+                : null,
+            'category' => $uploadedArtwork->category ?: 'Other',
+            'type' => $uploadedArtwork->medium ?: 'Not specified',
+            'price' => $uploadedArtwork->price,
+            'likes' => 0,
+            'color' => 'green',
+            'image' => $uploadedArtwork->image,
+            'is_uploaded' => true,
+
+            // Lets the view distinguish sold items from available items.
+            'status' => $uploadedArtwork->status,
+            'is_sold' => $uploadedArtwork->status === 'sold',
+        ];
 
         return view('artfy.detail', [
             'title' => $artwork['title'],
-            'eyebrow' => 'Artwork details',
+            'eyebrow' => 'Original artwork',
             'description' => $artwork['description'],
             'item' => $artwork,
             'pageType' => 'artwork',
@@ -332,60 +323,55 @@ class GalleryController extends Controller
     }
 
     /**
-     * Artist details and portfolio.
+     * Display a public artist profile and portfolio.
      */
     public function artist(string $slug): View
     {
-        if (preg_match('/^artist-(\d+)$/', $slug, $matches)) {
-            $artist = User::with([
-                'artistProfile',
-                'artistApplication',
-            ])
-                ->where('role', 'artist')
-                ->whereHas('artistApplication', function ($query) {
-                    $query->where('status', 'approved')
-                        ->where('payment_status', 'verified');
-                })
-                ->find((int) $matches[1]);
-
-            abort_unless($artist, 404);
-
-            $profile = $artist->artistProfile;
-            $application = $artist->artistApplication;
-
-            $item = [
-                'slug' => 'artist-' . $artist->id,
-                'name' => $profile?->artist_name ?: $artist->name,
-                'discipline' => $profile?->art_category
-                    ?: 'Independent artist',
-                'bio' => $profile?->bio
-                    ?: $application?->biography
-                    ?: 'Discover original artwork by this Artfy artist.',
-                'image' => $profile?->profile_photo,
-                'color' => 'green',
-            ];
-
-            return view('artfy.detail', [
-                'title' => $item['name'],
-                'eyebrow' => 'Artist portfolio',
-                'description' => $item['bio'],
-                'item' => $item,
-                'pageType' => 'artist',
-            ]);
+        if (!preg_match('/^artist-(\d+)$/', $slug, $matches)) {
+            abort(404);
         }
 
-        // Preserve existing sample artist URLs.
-        $artist = collect($this->sampleArtistCollection())
-            ->firstWhere('slug', $slug);
+        $artist = User::with([
+            'artistProfile',
+            'artistApplication',
+        ])
+            ->where('role', 'artist')
+            ->whereHas('artistApplication', function ($query) {
+                $query->where('status', 'approved')
+                    ->where('payment_status', 'verified');
+            })
+            ->findOrFail((int) $matches[1]);
 
-        abort_unless($artist, 404);
+        $profile = $artist->artistProfile;
+        $application = $artist->artistApplication;
 
-        return view('artfy.detail', [
-            'title' => $artist['name'],
-            'eyebrow' => 'Artist portfolio',
-            'description' => $artist['bio'],
-            'item' => $artist,
-            'pageType' => 'artist',
+        $artworks = Artwork::where('user_id', $artist->id)
+            ->whereIn('status', ['available', 'sold'])
+            ->where('moderation_status', 'approved')
+            ->latest()
+            ->get();
+
+        return view('artfy.artist-public-profile', [
+            'artist' => $artist,
+            'profile' => $profile,
+            'application' => $application,
+            'artworks' => $artworks,
+
+            'artistName' => $profile?->artist_name
+                ?: $artist->name,
+
+            'discipline' => $profile?->art_category
+                ?: $application?->art_category
+                ?: 'Independent artist',
+
+            'bio' => $profile?->bio
+                ?: $application?->biography
+                ?: 'This artist is part of the Artfy creative community.',
+
+            'profilePhoto' => $profile?->profile_photo,
+            'coverPhoto' => $profile?->cover_photo,
+            'location' => $profile?->location,
+            'portfolioUrl' => $profile?->portfolio_url,
         ]);
     }
 
@@ -394,22 +380,11 @@ class GalleryController extends Controller
      */
     public function exhibition(string $slug): View
     {
-        $exhibition = collect($this->exhibitionCollection())
-            ->firstWhere('slug', $slug);
-
-        abort_unless($exhibition, 404);
-
-        return view('artfy.detail', [
-            'title' => $exhibition['title'],
-            'eyebrow' => 'Online exhibition',
-            'description' => $exhibition['description'],
-            'item' => $exhibition,
-            'pageType' => 'exhibition',
-        ]);
+        abort(404);
     }
 
     /**
-     * Database artworks approved by the admin and currently available.
+     * Return available, admin-approved artworks for Discover and listings.
      */
     private function publicArtworkCollection(): array
     {
@@ -446,11 +421,11 @@ class GalleryController extends Controller
     }
 
     /**
-     * Approved artists followed by the sample artists.
+     * Return artists with approved applications and verified payments.
      */
     private function artistCollection(): array
     {
-        $databaseArtists = User::with([
+        return User::with([
             'artistProfile',
             'artistApplication',
         ])
@@ -479,132 +454,13 @@ class GalleryController extends Controller
                 ];
             })
             ->all();
-
-        return array_merge(
-            $databaseArtists,
-            $this->sampleArtistCollection()
-        );
     }
 
     /**
-     * Existing demo artworks.
-     * Prices here are sample amounts in BDT.
-     */
-    private function artworkCollection(): array
-    {
-        return [
-            [
-                'slug' => 'quiet-morning',
-                'title' => 'Quiet Morning',
-                'artist' => 'Maya Chen',
-                'artist_slug' => 'maya-chen',
-                'category' => 'Painting',
-                'type' => 'Acrylic',
-                'price' => 2400,
-                'likes' => 128,
-                'color' => 'peach',
-                'description' => 'A soft study of the first light of day, painted in warm, gentle layers.',
-                '_created_at' => 0,
-            ],
-            [
-                'slug' => 'blue-hour',
-                'title' => 'Blue Hour',
-                'artist' => 'Leo Martin',
-                'artist_slug' => 'leo-martin',
-                'category' => 'Photography',
-                'type' => 'Digital',
-                'price' => 1800,
-                'likes' => 96,
-                'color' => 'blue',
-                'description' => 'A quiet city street caught between the last light of day and the first stars.',
-                '_created_at' => 0,
-            ],
-            [
-                'slug' => 'wild-garden',
-                'title' => 'Wild Garden',
-                'artist' => 'Amara Okafor',
-                'artist_slug' => 'amara-okafor',
-                'category' => 'Illustration',
-                'type' => 'Digital',
-                'price' => 1250,
-                'likes' => 164,
-                'color' => 'green',
-                'description' => 'A lively imagined garden filled with color, movement, and small hidden details.',
-                '_created_at' => 0,
-            ],
-            [
-                'slug' => 'soft-forms',
-                'title' => 'Soft Forms',
-                'artist' => 'Maya Chen',
-                'artist_slug' => 'maya-chen',
-                'category' => 'Painting',
-                'type' => 'Oil',
-                'price' => 3200,
-                'likes' => 82,
-                'color' => 'lilac',
-                'description' => 'An abstract composition exploring balance, shape, and a quieter kind of color.',
-                '_created_at' => 0,
-            ],
-        ];
-    }
-
-    /**
-     * Existing demo artists.
-     */
-    private function sampleArtistCollection(): array
-    {
-        return [
-            [
-                'slug' => 'maya-chen',
-                'name' => 'Maya Chen',
-                'discipline' => 'Painter · Portland, OR',
-                'bio' => 'Maya creates intimate, color-rich paintings inspired by everyday moments and the changing light.',
-                'color' => 'peach',
-            ],
-            [
-                'slug' => 'leo-martin',
-                'name' => 'Leo Martin',
-                'discipline' => 'Photographer · London, UK',
-                'bio' => 'Leo finds small stories in city streets, late evenings, and the spaces people pass through.',
-                'color' => 'blue',
-            ],
-            [
-                'slug' => 'amara-okafor',
-                'name' => 'Amara Okafor',
-                'discipline' => 'Illustrator · Lagos, NG',
-                'bio' => 'Amara makes expressive digital illustrations inspired by nature, memory, and imagined worlds.',
-                'color' => 'green',
-            ],
-        ];
-    }
-
-    /**
-     * Existing demo exhibitions.
+     * Return no exhibitions until a real exhibition data source exists.
      */
     private function exhibitionCollection(): array
     {
-        return [
-            [
-                'slug' => 'color-in-motion',
-                'title' => 'Color in Motion',
-                'subtitle' => 'A study in energy and expression',
-                'description' => 'A bright collection of works where color takes the lead and every piece has its own rhythm.',
-                'color' => 'peach',
-            ],
-            [
-                'slug' => 'quiet-spaces',
-                'title' => 'Quiet Spaces',
-                'subtitle' => 'Finding calm in the everyday',
-                'description' => 'Artists share the small, peaceful moments that make an ordinary place feel like home.',
-                'color' => 'blue',
-            ],
-            [
-                'slug' => 'nature-reimagined',
-                'title' => 'Nature, Reimagined',
-                'subtitle' => 'A new perspective on the natural world',
-                'description' => 'A playful collection that transforms familiar plants, landscapes, and living forms.',
-                'color' => 'green',
-            ],
-        ];
+        return [];
     }
 }

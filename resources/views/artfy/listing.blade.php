@@ -1,9 +1,9 @@
-
 @extends('artfy.layout')
 
 @section('title', $title)
 
 @section('content')
+
 <style>
     .page-intro {
         color: #424b35;
@@ -74,19 +74,42 @@
         box-shadow: 0 0 0 3px rgba(137, 150, 110, 0.16);
     }
 
+    /* Artwork card visual container */
     .artfy-card-visual {
         position: relative;
         overflow: hidden;
         background-color: #e6e9d8;
     }
 
+    /*
+     * FIX:
+     * Uploaded artwork cards use a clean background.
+     * Hide the decorative pseudo-elements only when a real
+     * uploaded image is present inside the card.
+     */
+    .artfy-card-visual:has(.artfy-card-photo)::before,
+    .artfy-card-visual:has(.artfy-card-photo)::after {
+        content: none !important;
+        display: none !important;
+        background: none !important;
+        background-image: none !important;
+    }
+
+    .artfy-card-visual:has(.artfy-card-photo) {
+        background: #f8f6f2 !important;
+        background-image: none !important;
+        isolation: isolate;
+    }
+
     .artfy-card-photo {
         position: absolute;
         inset: 0;
+        display: block;
         width: 100%;
         height: 100%;
         object-fit: cover;
-        display: block;
+        object-position: center;
+        z-index: 0;
     }
 
     .artfy-card-visual .art-card-category,
@@ -101,6 +124,13 @@
         height: 100%;
         object-fit: cover;
         border-radius: inherit;
+    }
+
+    /* Keep artist-avatar decorative shapes hidden behind uploaded photos */
+    .artist-avatar:has(.artfy-artist-photo)::before,
+    .artist-avatar:has(.artfy-artist-photo)::after {
+        content: none !important;
+        display: none !important;
     }
 
     .art-card-info strong {
@@ -154,7 +184,9 @@
 
 <section class="page-intro">
     <span class="eyebrow">{{ $eyebrow }}</span>
+
     <h1>{{ $title }}</h1>
+
     <p>{{ $description }}</p>
 
     @if ($pageType === 'artworks')
@@ -168,6 +200,7 @@
             <label class="search-field">
                 <span aria-hidden="true">⌕</span>
                 <span class="visually-hidden">Search artworks</span>
+
                 <input
                     type="search"
                     name="q"
@@ -176,11 +209,13 @@
                 >
             </label>
 
-            {{-- One combined art-type filter --}}
+            {{-- Art type --}}
             <label>
                 <span class="visually-hidden">Art type</span>
+
                 <select name="art_type" aria-label="Art type">
                     <option value="">All art types</option>
+
                     @foreach ([
                         'Sketching',
                         'Drawing',
@@ -211,8 +246,10 @@
             {{-- Maximum budget --}}
             <label>
                 <span class="visually-hidden">Maximum budget</span>
+
                 <select name="max_price" aria-label="Maximum budget">
                     <option value="">Any price</option>
+
                     @foreach ([2000, 3000, 5000, 10000, 20000] as $amount)
                         <option
                             value="{{ $amount }}"
@@ -229,6 +266,7 @@
             {{-- Sorting --}}
             <label>
                 <span class="visually-hidden">Sort artworks</span>
+
                 <select name="sort" aria-label="Sort artworks">
                     <option
                         value="latest"
@@ -236,24 +274,28 @@
                     >
                         Newest
                     </option>
+
                     <option
                         value="oldest"
                         @selected(($sort ?? '') === 'oldest')
                     >
                         Oldest
                     </option>
+
                     <option
                         value="price-low"
                         @selected(($sort ?? '') === 'price-low')
                     >
                         Price: low to high
                     </option>
+
                     <option
                         value="price-high"
                         @selected(($sort ?? '') === 'price-high')
                     >
                         Price: high to low
                     </option>
+
                     <option
                         value="popular"
                         @selected(($sort ?? '') === 'popular')
@@ -271,15 +313,12 @@
                 if (!filters) {
                     return;
                 }
-
-                // Changing any dropdown applies the selected filters.
                 filters.querySelectorAll('select').forEach(function (select) {
                     select.addEventListener('change', function () {
                         filters.requestSubmit();
                     });
                 });
 
-                // Search when the user submits the search field.
                 const search = filters.querySelector('input[name="q"]');
 
                 if (search) {
@@ -303,8 +342,11 @@
     @if (count($items) === 0)
         <div class="empty-state">
             <span>✳</span>
+
             <h2>No matches just yet</h2>
+
             <p>Try choosing another art type or a different budget.</p>
+
             <a
                 class="button button-dark"
                 href="{{ route('artworks.index') }}"
@@ -320,7 +362,17 @@
                     class="art-card"
                     href="{{ route('artworks.show', $item['slug']) }}"
                 >
-                    <div class="art-card-image artwork-art artfy-card-visual {{ $item['color'] ?? 'green' }}">
+                    {{--
+                        Uploaded image:
+                        Do not add artwork-art because it creates
+                        the default decorative shapes.
+
+                        No uploaded image:
+                        Keep artwork-art to preserve the default design.
+                    --}}
+                    <div
+                        class="art-card-image artfy-card-visual {{ empty($item['image']) ? 'artwork-art ' . ($item['color'] ?? 'green') : '' }}"
+                    >
                         @if (!empty($item['image']))
                             <img
                                 class="artfy-card-photo"
@@ -342,6 +394,7 @@
                     <div class="art-card-info">
                         <div>
                             <h3>{{ $item['title'] }}</h3>
+
                             <p>
                                 by
                                 <span>
@@ -403,12 +456,16 @@
                     href="{{ route('exhibitions.show', $item['slug']) }}"
                 >
                     <span class="preview-tag">Online exhibition</span>
+
                     <strong>{{ $item['title'] }}</strong>
+
                     <small>{{ $item['subtitle'] }}</small>
+
                     <span class="preview-arrow">↗</span>
                 </a>
             @endforeach
         </div>
     @endif
 </section>
+
 @endsection
