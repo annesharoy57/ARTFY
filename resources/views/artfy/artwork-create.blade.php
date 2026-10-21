@@ -1,14 +1,17 @@
-
 @extends('artfy.layout')
 
 @section('title', 'Upload Artwork')
 
 @section('content')
 <div class="upload-page">
-    <a class="upload-back" href="{{ route('artist.studio') }}">← Back to Artist Studio</a>
+    <a class="upload-back" href="{{ route('artist.studio') }}">
+        ← Back to Artist Studio
+    </a>
 
     <h1>Upload new artwork</h1>
-    <p class="upload-intro">Share your creation with the Artfy community.</p>
+    <p class="upload-intro">
+        Share your creation with the Artfy community.
+    </p>
 
     @if ($errors->any())
         <div class="upload-error">
@@ -30,9 +33,48 @@
         @csrf
 
         <label for="title">Artwork title *</label>
-        <input id="title" name="title" value="{{ old('title') }}" maxlength="255" required>
+        <input
+            id="title"
+            name="title"
+            value="{{ old('title') }}"
+            maxlength="255"
+            required
+        >
 
-        <label for="image">Artwork image *</label>
+        <label for="artwork_type">Artwork type *</label>
+        <select id="artwork_type" name="artwork_type" required>
+            <option value="physical"
+                {{ old('artwork_type', 'physical') === 'physical' ? 'selected' : '' }}>
+                Physical Artwork
+            </option>
+            <option value="digital"
+                {{ old('artwork_type') === 'digital' ? 'selected' : '' }}>
+                Digital Artwork
+            </option>
+        </select>
+
+        <div id="physical-info" class="upload-info">
+            <strong>Physical artwork</strong>
+            <p>
+                The buyer's delivery charge will be calculated using the
+                delivery distance: ৳30 base charge + ৳15 per kilometre.
+            </p>
+            <p>
+                You will need to arrange delivery after the order is paid.
+            </p>
+        </div>
+
+        <div id="digital-info" class="upload-info" hidden>
+            <strong>Digital artwork</strong>
+            <p>
+                Upload a preview image and the actual downloadable file.
+                The original file will be stored privately and made available
+                to the buyer only after successful payment.
+            </p>
+            <p>Digital artwork has no delivery charge.</p>
+        </div>
+
+        <label for="image">Artwork preview image *</label>
         <input
             id="image"
             name="image"
@@ -41,6 +83,21 @@
             required
         >
         <small>JPG, PNG or WebP. Maximum size: 5 MB.</small>
+
+        <div id="digital-file-group" hidden>
+            <label for="digital_file">Downloadable artwork file *</label>
+            <input
+                id="digital_file"
+                name="digital_file"
+                type="file"
+                accept=".pdf,.png,.jpg,.jpeg,.webp,.zip"
+                disabled
+            >
+            <small>
+                PDF, PNG, JPG, WebP or ZIP. Maximum size: 20 MB.
+                This file is different from the preview image.
+            </small>
+        </div>
 
         <label for="description">Description</label>
         <textarea
@@ -55,7 +112,8 @@
             id="category"
             name="category"
             value="{{ old('category') }}"
-            placeholder="Painting, Digital Art, Photography..."
+            maxlength="255"
+            placeholder="Painting, Photography, Illustration..."
         >
 
         <label for="medium">Medium</label>
@@ -63,6 +121,7 @@
             id="medium"
             name="medium"
             value="{{ old('medium') }}"
+            maxlength="255"
             placeholder="Oil on canvas, Watercolor, Digital..."
         >
 
@@ -78,7 +137,12 @@
             placeholder="e.g. 20000"
         >
 
-        <button type="submit">Publish artwork</button>
+        <button type="submit">Submit artwork for approval</button>
+
+        <p class="upload-note">
+            Your artwork will be reviewed by an admin before it appears
+            in the public gallery.
+        </p>
     </form>
 </div>
 
@@ -89,17 +153,39 @@
         padding: 45px 24px;
         color: #414c2c;
     }
-    .upload-back { color: #55613a; text-decoration: none; font-weight: 600; }
-    .upload-page h1 { margin: 26px 0 8px; font-size: clamp(30px, 5vw, 42px); }
-    .upload-intro { color: #72795f; margin-bottom: 28px; }
+
+    .upload-back {
+        color: #55613a;
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+    .upload-page h1 {
+        margin: 26px 0 8px;
+        font-size: clamp(30px, 5vw, 42px);
+    }
+
+    .upload-intro {
+        color: #72795f;
+        margin-bottom: 28px;
+    }
+
     .upload-form {
         background: #fffef9;
         border: 1px solid #e1e2d5;
         border-radius: 16px;
         padding: 28px;
     }
-    .upload-form label { display: block; margin: 18px 0 8px; font-weight: 600; }
-    .upload-form input:not([type="file"]), .upload-form textarea {
+
+    .upload-form label {
+        display: block;
+        margin: 18px 0 8px;
+        font-weight: 600;
+    }
+
+    .upload-form input:not([type="file"]),
+    .upload-form textarea,
+    .upload-form select {
         width: 100%;
         box-sizing: border-box;
         padding: 13px;
@@ -109,8 +195,34 @@
         color: #414c2c;
         font: inherit;
     }
-    .upload-form input[type="file"] { display: block; max-width: 100%; }
-    .upload-form small { display: block; color: #72795f; margin-top: 7px; }
+
+    .upload-form input[type="file"] {
+        display: block;
+        max-width: 100%;
+        font: inherit;
+    }
+
+    .upload-form small {
+        display: block;
+        color: #72795f;
+        margin-top: 7px;
+        line-height: 1.6;
+    }
+
+    .upload-info {
+        margin-top: 16px;
+        padding: 16px;
+        border: 1px solid #d8dacb;
+        border-radius: 10px;
+        background: #f5f3e8;
+        line-height: 1.6;
+    }
+
+    .upload-info p {
+        margin: 7px 0 0;
+        color: #62694f;
+    }
+
     .upload-form button {
         margin-top: 25px;
         padding: 14px 22px;
@@ -122,7 +234,18 @@
         font-weight: 700;
         cursor: pointer;
     }
-    .upload-form button:hover { background: #414c2c; }
+
+    .upload-form button:hover {
+        background: #414c2c;
+    }
+
+    .upload-note {
+        margin-top: 16px;
+        color: #72795f;
+        font-size: 13px;
+        line-height: 1.6;
+    }
+
     .upload-error {
         background: #f8e8e5;
         color: #8a3025;
@@ -130,9 +253,51 @@
         border-radius: 9px;
         margin: 20px 0;
     }
+
+    .upload-error ul {
+        margin-bottom: 0;
+    }
+
+    [hidden] {
+        display: none !important;
+    }
+
     @media (max-width: 600px) {
-        .upload-page { padding: 28px 16px; }
-        .upload-form { padding: 20px; }
+        .upload-page {
+            padding: 28px 16px;
+        }
+
+        .upload-form {
+            padding: 20px;
+        }
     }
 </style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const typeSelect = document.getElementById('artwork_type');
+        const physicalInfo = document.getElementById('physical-info');
+        const digitalInfo = document.getElementById('digital-info');
+        const digitalGroup = document.getElementById('digital-file-group');
+        const digitalFile = document.getElementById('digital_file');
+
+        function updateArtworkType() {
+            const isDigital = typeSelect.value === 'digital';
+
+            physicalInfo.hidden = isDigital;
+            digitalInfo.hidden = !isDigital;
+            digitalGroup.hidden = !isDigital;
+
+            digitalFile.disabled = !isDigital;
+            digitalFile.required = isDigital;
+
+            if (!isDigital) {
+                digitalFile.value = '';
+            }
+        }
+
+        typeSelect.addEventListener('change', updateArtworkType);
+        updateArtworkType();
+    });
+</script>
 @endsection

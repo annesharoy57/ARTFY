@@ -271,7 +271,7 @@ class GalleryController extends Controller
      * Display an approved artwork.
      *
      * Available and sold artworks remain viewable.
-     * A separate purchase workflow must prevent buying sold items.
+     * Only the owning artist can manage their own uploaded artwork.
      */
     public function artwork(string $slug): View
     {
@@ -279,7 +279,6 @@ class GalleryController extends Controller
             abort(404);
         }
 
-        // FIX: Allow both available and sold artworks to be viewed.
         $uploadedArtwork = Artwork::with('artist.artistProfile')
             ->whereIn('status', ['available', 'sold'])
             ->where('moderation_status', 'approved')
@@ -291,6 +290,7 @@ class GalleryController extends Controller
         $profile = $artist?->artistProfile;
 
         $artwork = [
+            'id' => $uploadedArtwork->id,
             'slug' => 'uploaded-' . $uploadedArtwork->id,
             'title' => $uploadedArtwork->title,
             'description' => $uploadedArtwork->description
@@ -307,10 +307,13 @@ class GalleryController extends Controller
             'color' => 'green',
             'image' => $uploadedArtwork->image,
             'is_uploaded' => true,
-
-            // Lets the view distinguish sold items from available items.
             'status' => $uploadedArtwork->status,
             'is_sold' => $uploadedArtwork->status === 'sold',
+
+            // Show management controls only to the owning artist.
+            'can_manage' => auth()->check()
+                && (int) auth()->id() === (int) $uploadedArtwork->user_id
+                && auth()->user()->isArtist(),
         ];
 
         return view('artfy.detail', [
@@ -398,6 +401,7 @@ class GalleryController extends Controller
                 $profile = $artist?->artistProfile;
 
                 return [
+                    'id' => $artwork->id,
                     'slug' => 'uploaded-' . $artwork->id,
                     'title' => $artwork->title,
                     'artist' => $profile?->artist_name

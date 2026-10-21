@@ -21,6 +21,8 @@ class Artwork extends Model
         'status',
         'moderation_status',
         'is_sold',
+        'artwork_type',
+        'digital_file_path',
     ];
 
     protected function casts(): array
@@ -31,6 +33,9 @@ class Artwork extends Model
         ];
     }
 
+    /**
+     * The artist who created this artwork.
+     */
     public function artist(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
