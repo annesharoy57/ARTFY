@@ -1,3 +1,4 @@
+
 <?php
 
 use App\Http\Controllers\GalleryController;
@@ -87,8 +88,8 @@ Route::view('/choose-role', 'auth.choose-role')
     ->name('auth.choose-role');
 
 // ========================================
-// SSLCOMMERZ ARTWORK PAYMENT CALLBACKS
-// These routes stay outside the auth middleware group.
+// SSLCOMMERZ PAYMENT CALLBACKS
+// Keep outside the auth group.
 // ========================================
 
 Route::post('/payment/sslcommerz/success', [
@@ -125,9 +126,7 @@ Route::post('/logout', [AuthController::class, 'logout'])
 
 Route::middleware('auth')->group(function () {
 
-    // ------------------------------------
-    // ARTWORK PURCHASE
-    // ------------------------------------
+    // ARTWORK PURCHASE / CHECKOUT
 
     Route::get('/artworks/{slug}/buy', [
         ArtworkPurchaseController::class,
@@ -139,9 +138,14 @@ Route::middleware('auth')->group(function () {
         'store',
     ])->name('artworks.purchase.store');
 
-    // ------------------------------------
+    // DELIVERY ADDRESS GEOCODING
+
+    Route::post('/artworks/delivery/geocode', [
+        ArtworkPurchaseController::class,
+        'geocodeDestination',
+    ])->name('artworks.delivery.geocode');
+
     // ARTIST MEMBERSHIP APPLICATION
-    // ------------------------------------
 
     Route::get('/artist/application', [
         AuthController::class,
@@ -153,18 +157,14 @@ Route::middleware('auth')->group(function () {
         'submitArtistApplication',
     ])->name('artist.application.submit');
 
-    // ------------------------------------
     // ARTIST MEMBERSHIP PAYMENT
-    // ------------------------------------
 
     Route::post('/artist/application/payment', [
         AuthController::class,
         'submitMembershipPayment',
     ])->name('artist.application.payment');
 
-    // ------------------------------------
     // ARTIST PROFILE EDITING
-    // ------------------------------------
 
     Route::get('/artist/my-profile', [
         ArtistProfileController::class,
@@ -176,9 +176,7 @@ Route::middleware('auth')->group(function () {
         'update',
     ])->name('artist-profile.update');
 
-    // ------------------------------------
-    // MY PROFILE - ARTIST / ART LOVER
-    // ------------------------------------
+    // MY PROFILE
 
     Route::get('/my-profile', [
         ArtistProfileController::class,
@@ -195,18 +193,17 @@ Route::middleware('auth')->group(function () {
         'updateArtLover',
     ])->name('my-profile.update');
 
-    // ------------------------------------
-    // ARTIST STUDIO
-    // ------------------------------------
+    // ====================================
+    // MY ARTWORKS
+    // ====================================
 
+    // Keep this route name for compatibility with existing views.
     Route::get('/artist/studio', [
         ArtistArtworkController::class,
         'index',
     ])->name('artist.studio');
 
-    // ------------------------------------
-    // CREATE / UPLOAD ARTWORK
-    // ------------------------------------
+    // CREATE / UPLOAD
 
     Route::get('/artist/studio/artworks/create', [
         ArtistArtworkController::class,
@@ -218,9 +215,21 @@ Route::middleware('auth')->group(function () {
         'store',
     ])->name('artist.artworks.store');
 
-    // ------------------------------------
-    // DELETE OWN ARTWORK
-    // ------------------------------------
+    // EDIT
+
+    Route::get('/artist/my-artworks/{artwork}/edit', [
+        ArtistArtworkController::class,
+        'edit',
+    ])->name('artist.artworks.edit');
+
+    // UPDATE
+
+    Route::put('/artist/my-artworks/{artwork}', [
+        ArtistArtworkController::class,
+        'update',
+    ])->name('artist.artworks.update');
+
+    // DELETE
 
     Route::delete('/artist/studio/artworks/{artwork}', [
         ArtistArtworkController::class,
@@ -236,37 +245,29 @@ Route::middleware('auth')->group(function () {
         'index',
     ])->name('admin.dashboard');
 
-    // ====================================
     // DEDICATED ADMIN PAGES
-    // ====================================
 
-    // Artist membership applications
     Route::get('/admin/memberships', [
         AdminMembershipController::class,
         'memberships',
     ])->name('admin.memberships.index');
 
-    // Membership payment verification
     Route::get('/admin/payments', [
         AdminMembershipController::class,
         'payments',
     ])->name('admin.payments.index');
 
-    // Reports and activity
     Route::get('/admin/reports', [
         AdminMembershipController::class,
         'reports',
     ])->name('admin.reports.index');
 
-    // Sales and commission
     Route::get('/admin/sales', [
         AdminMembershipController::class,
         'sales',
     ])->name('admin.sales.index');
 
-    // ====================================
     // ADMIN MEMBERSHIP MANAGEMENT
-    // ====================================
 
     Route::post('/admin/memberships/{application}/approve', [
         AdminMembershipController::class,
@@ -278,18 +279,12 @@ Route::middleware('auth')->group(function () {
         'reject',
     ])->name('admin.memberships.reject');
 
-    // ------------------------------------
-    // ADMIN MEMBERSHIP PAYMENT VERIFICATION
-    // ------------------------------------
-
     Route::post('/admin/memberships/{application}/verify-payment', [
         AdminMembershipController::class,
         'verifyPayment',
     ])->name('admin.memberships.verify-payment');
 
-    // ====================================
     // ADMIN ARTWORK REVIEW
-    // ====================================
 
     Route::get('/admin/artworks', [
         AdminArtworkController::class,
@@ -306,9 +301,7 @@ Route::middleware('auth')->group(function () {
         'reject',
     ])->name('admin.artworks.reject');
 
-    // ====================================
     // ADMIN ARTISTS
-    // ====================================
 
     Route::get('/admin/artists', [
         AdminUserController::class,
@@ -320,9 +313,7 @@ Route::middleware('auth')->group(function () {
         'showArtist',
     ])->name('admin.artists.show');
 
-    // ====================================
     // ADMIN ART LOVERS
-    // ====================================
 
     Route::get('/admin/art-lovers', [
         AdminUserController::class,
@@ -334,9 +325,7 @@ Route::middleware('auth')->group(function () {
         'showArtLover',
     ])->name('admin.art-lovers.show');
 
-    // ====================================
     // NOTIFICATIONS
-    // ====================================
 
     Route::get('/notifications', [
         NotificationController::class,
@@ -347,5 +336,4 @@ Route::middleware('auth')->group(function () {
         NotificationController::class,
         'open',
     ])->name('notifications.open');
-
 });
