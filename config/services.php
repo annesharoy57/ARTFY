@@ -34,6 +34,9 @@ return [
 
         'callback_url' => env('SSLCOMMERZ_CALLBACK_URL'),
     ],
+    'openrouteservice' => [
+        'key' => env('ORS_API_KEY'),
+    ],
 
 
 ];

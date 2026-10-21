@@ -15,8 +15,18 @@ class ArtistProfile extends Model
         'bio',
         'art_category',
         'location',
+        'latitude',
+        'longitude',
         'portfolio_url',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'latitude' => 'decimal:7',
+            'longitude' => 'decimal:7',
+        ];
+    }
 
     public function user(): BelongsTo
     {

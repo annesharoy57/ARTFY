@@ -1,295 +1,311 @@
 @extends('artfy.layout')
 
-@section('title', $title)
+@section('title', ($item['title'] ?? 'Artwork') . ' | Artfy')
 
 @section('content')
+@php
+    $image = $item['image'] ?? null;
 
-<style>
-    /* Artwork image container */
-    .detail-art {
-        position: relative;
-        min-width: 0;
-        min-height: 440px;
-        overflow: hidden;
-        box-sizing: border-box;
-        border-radius: 5px;
-    }
+    $imageUrl = $image
+        ? (
+            filter_var($image, FILTER_VALIDATE_URL)
+                ? $image
+                : asset('storage/' . ltrim($image, '/'))
+        )
+        : null;
 
-    /* Clean frame when an artist has uploaded a real image */
-    .detail-art:has(.detail-uploaded-image) {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0;
-        border: none;
-        background: #f8f6f2 !important;
-        background-image: none !important;
-        isolation: isolate;
-    }
+    $slug = $item['slug'] ?? null;
 
-    /* Remove decorative shapes from uploaded artwork only */
-    .detail-art:has(.detail-uploaded-image)::before,
-    .detail-art:has(.detail-uploaded-image)::after {
-        content: none !important;
-        display: none !important;
-        background: none !important;
-        background-image: none !important;
-    }
+    $isSold = !empty($item['is_sold'])
+        || (($item['status'] ?? null) === 'sold');
 
-    /* Display the artist's complete image */
-    .detail-art .detail-uploaded-image {
-        display: block;
-        width: 100%;
-        height: 100%;
-        min-width: 0;
-        min-height: 0;
-        max-width: 100%;
-        max-height: 100%;
-        object-fit: contain;
-        object-position: center;
-        border: none;
-        border-radius: 0;
-        box-shadow: none;
-        background: transparent;
-        position: relative;
-        z-index: 1;
-    }
-
-    .detail-artist-name {
-        color: inherit;
-        text-decoration: none;
-    }
-
-    .detail-artist-name:hover {
-        text-decoration: underline;
-    }
-
-    /* Sold artwork status */
-    .detail-sold-label {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 12px 24px;
-        background: #e5e2d8;
-        color: #414c2c;
-        border: 1px solid #72795f;
-        border-radius: 8px;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: default;
-    }
-
-    @media (max-width: 600px) {
-        .detail-art {
-            min-height: 300px;
-        }
-
-        .detail-art:has(.detail-uploaded-image) {
-            padding: 0;
-        }
-    }
-</style>
+    $canManage = !empty($item['can_manage'])
+        && !empty($item['is_uploaded'])
+        && !empty($item['id']);
+@endphp
 
 <section class="detail-page">
 
-    <a
-        class="back-link"
-        href="{{ match ($pageType) {
-            'artwork' => route('artworks.index'),
-            'artist' => route('artists.index'),
-            default => route('exhibitions.index')
-        } }}"
-    >
-        ← Back to {{ $pageType === 'artwork'
-            ? 'artworks'
-            : ($pageType === 'artist' ? 'artists' : 'exhibitions') }}
+    {{-- Return to the logged-in user's Artist Profile --}}
+    <a class="back-link" href="{{ route('my-profile') }}">
+        ← Back to My Artworks
     </a>
+
+    @if (session('success'))
+        <div role="status" class="alert alert-success">
+            {{ session('success') }}
+        </div>
+    @endif
+
+    @if (session('error'))
+        <div role="alert" class="alert alert-error">
+            {{ session('error') }}
+        </div>
+    @endif
+
+    @if ($errors->any())
+        <div role="alert" class="alert alert-error">
+            <strong>Please correct the following:</strong>
+            <ul>
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
 
     <div class="detail-layout">
 
-        {{-- Artwork, artist, or exhibition visual --}}
-        <div class="detail-art {{ $item['color'] ?? 'green' }}">
-
-            @if ($pageType === 'artwork' && !empty($item['image']))
-
+        <div class="detail-image">
+            @if ($imageUrl)
                 <img
-                    class="detail-uploaded-image"
-                    src="{{ asset('storage/' . $item['image']) }}"
-                    alt="{{ $item['title'] ?? 'Uploaded artwork' }}"
+                    src="{{ $imageUrl }}"
+                    alt="{{ $item['title'] ?? 'Artwork' }}"
+                    loading="eager"
                 >
-
             @else
-
-                <span class="detail-stamp">{{ $eyebrow }}</span>
-
+                <div class="detail-image-placeholder">
+                    Artwork image unavailable
+                </div>
             @endif
-
         </div>
 
-        {{-- Details and information --}}
         <div class="detail-copy">
 
-            <span class="eyebrow">{{ $eyebrow }}</span>
+            <p class="eyebrow">
+                {{ $eyebrow ?? 'ARTWORK DETAILS' }}
+            </p>
 
-            <h1>{{ $title }}</h1>
+            <h1>{{ $item['title'] ?? 'Untitled artwork' }}</h1>
 
-            <p class="detail-description">{{ $description }}</p>
-
-            @if ($pageType === 'artwork')
-
-                <div class="detail-facts">
-
-                    <span>
-                        Artist
-
-                        @if (!empty($item['artist_slug']))
-
-                            <a
-                                class="detail-artist-name"
-                                href="{{ route('artists.show', $item['artist_slug']) }}"
-                            >
-                                {{ $item['artist'] ?? 'Artfy Artist' }} ↗
-                            </a>
-
-                        @else
-
-                            <strong>
-                                {{ $item['artist'] ?? 'Artfy Artist' }}
-                            </strong>
-
-                        @endif
-                    </span>
-
-                    <span>
-                        Category
-                        <strong>
-                            {{ $item['category'] ?? 'Uncategorized' }}
-                        </strong>
-                    </span>
-
-                    <span>
-                        Medium
-                        <strong>
-                            {{ $item['type'] ?? 'Not specified' }}
-                        </strong>
-                    </span>
-
-                </div>
-
-                <div class="detail-actions">
-
-                    {{-- Artwork price in Bangladeshi Taka --}}
-                    <span class="detail-price">
-
-                        @if (
-                            isset($item['price']) &&
-                            $item['price'] !== null &&
-                            $item['price'] !== ''
-                        )
-
-                            ৳{{ number_format((float) $item['price'], 2) }}
-
-                        @else
-
-                            Price not listed
-
-                        @endif
-
-                    </span>
-
-                    {{-- Purchase status and Buy Now button --}}
-                    @php
-                        $isSold = !empty($item['is_sold'])
-                            || ($item['status'] ?? '') === 'sold';
-                    @endphp
-
-                    @if ($isSold)
-
-                        <span
-                            class="detail-sold-label"
-                            aria-label="This artwork has been sold"
-                        >
-                            Sold
-                        </span>
-
-                    @elseif (
-                        !empty($item['is_uploaded']) &&
-                        isset($item['price']) &&
-                        is_numeric($item['price']) &&
-                        (float) $item['price'] > 0
-                    )
-
-                        @auth
-
-                            @if (auth()->user()->isArtLover())
-
-                                <a
-                                    class="button button-dark"
-                                    href="{{ route('artworks.purchase.create', $item['slug']) }}"
-                                >
-                                    Buy Now <span>→</span>
-                                </a>
-
-                            @endif
-
-                        @else
-
-                            <a
-                                class="button button-dark"
-                                href="{{ route('login') }}"
-                            >
-                                Log in to buy <span>→</span>
-                            </a>
-
-                        @endauth
-
+            @if (!empty($item['artist']))
+                <p class="detail-artist">
+                    By
+                    @if (!empty($item['artist_slug']))
+                        <a href="{{ route('artists.show', $item['artist_slug']) }}">
+                            {{ $item['artist'] }}
+                        </a>
+                    @else
+                        {{ $item['artist'] }}
                     @endif
+                </p>
+            @endif
 
-                    {{-- Favorites --}}
+            <div class="detail-description">{{ $item['description'] ?? $description ?? '' }}</div>
+
+            <div class="detail-facts">
+
+                @if (!empty($item['category']))
+                    <div class="detail-fact">
+                        <span>Category</span>
+                        <strong>{{ $item['category'] }}</strong>
+                    </div>
+                @endif
+
+                @if (!empty($item['type']))
+                    <div class="detail-fact">
+                        <span>Medium</span>
+                        <strong>{{ $item['type'] }}</strong>
+                    </div>
+                @endif
+
+                @if (!empty($item['status']))
+                    <div class="detail-fact">
+                        <span>Availability</span>
+                        <strong>{{ $isSold ? 'Sold' : 'Available' }}</strong>
+                    </div>
+                @endif
+
+            </div>
+
+            <div class="detail-actions">
+
+                @if (isset($item['price']) && $item['price'] !== null)
+                    <p class="detail-price">
+                        ৳{{ number_format((float) $item['price'], 2) }}
+                    </p>
+                @endif
+
+                @if ($isSold)
+                    <button class="button button-dark" type="button" disabled>
+                        Artwork Sold
+                    </button>
+                @elseif (!empty($slug))
+                    @auth
+                        <a
+                            class="button button-dark"
+                            href="{{ route('artworks.purchase.create', $slug) }}"
+                        >
+                            Buy Artwork →
+                        </a>
+                    @else
+                        <a
+                            class="button button-dark"
+                            href="{{ route('login', ['redirect' => url()->current()]) }}"
+                        >
+                            Log in to Buy →
+                        </a>
+                    @endauth
+                @endif
+
+                <a class="button button-light" href="{{ route('favorites.index') }}">
+                    View Favorites
+                </a>
+
+            </div>
+
+            @if ($canManage)
+                <div class="artwork-management-actions">
+
                     <a
                         class="button button-dark"
-                        href="{{ route('favorites.index') }}"
+                        href="{{ route('artist.artworks.edit', $item['id']) }}"
                     >
-                        Save to favorites <span>♡</span>
+                        Edit Artwork
                     </a>
 
+                    <form
+                        action="{{ route('artist.artworks.destroy', $item['id']) }}"
+                        method="POST"
+                        onsubmit="return confirm('Delete this artwork permanently? This action cannot be undone.');"
+                    >
+                        @csrf
+                        @method('DELETE')
+
+                        <button class="button button-light" type="submit">
+                            Delete Artwork
+                        </button>
+                    </form>
+
                 </div>
-
-            @elseif ($pageType === 'artist')
-
-                <div class="detail-facts">
-
-                    <span>
-                        Based in
-                        <strong>
-                            {{ $item['discipline'] ?? 'Independent artist' }}
-                        </strong>
-                    </span>
-
-                </div>
-
-                <a
-                    class="button button-dark"
-                    href="{{ route('artworks.index', ['q' => $item['name']]) }}"
-                >
-                    Explore {{ $item['name'] }}’s work <span>→</span>
-                </a>
-
-            @else
-
-                <a
-                    class="button button-dark"
-                    href="{{ route('artworks.index') }}"
-                >
-                    Explore artworks <span>→</span>
-                </a>
-
             @endif
 
         </div>
-
     </div>
-
 </section>
 
+<style>
+    .detail-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+        gap: clamp(24px, 5vw, 64px);
+        align-items: start;
+        margin-top: 24px;
+    }
+
+    .detail-image {
+        min-width: 0;
+        overflow: hidden;
+        border-radius: 12px;
+        background: #f4f1eb;
+    }
+
+    .detail-image img {
+        display: block;
+        width: 100%;
+        max-height: 760px;
+        object-fit: contain;
+    }
+
+    .detail-image-placeholder {
+        padding: 80px 20px;
+        text-align: center;
+    }
+
+    .detail-copy h1 {
+        margin: 10px 0 14px;
+        overflow-wrap: anywhere;
+    }
+
+    .detail-artist {
+        margin-bottom: 20px;
+    }
+
+    .detail-description {
+        line-height: 1.8;
+        white-space: pre-line;
+        overflow-wrap: anywhere;
+    }
+
+    .detail-facts {
+        display: grid;
+        gap: 12px;
+        margin: 24px 0;
+    }
+
+    .detail-fact {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #e7e3dc;
+    }
+
+    .detail-fact span {
+        opacity: 0.7;
+    }
+
+    .detail-price {
+        width: 100%;
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin: 0 0 6px;
+    }
+
+    .detail-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        margin-top: 24px;
+    }
+
+    .artwork-management-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        width: 100%;
+        margin-top: 16px;
+    }
+
+    .artwork-management-actions form {
+        margin: 0;
+    }
+
+    .detail-actions button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .alert {
+        padding: 12px 16px;
+        margin: 16px 0;
+        border-radius: 8px;
+    }
+
+    .alert-success {
+        background: #edf7ee;
+        color: #205c2d;
+    }
+
+    .alert-error {
+        background: #fff0f0;
+        color: #9b2020;
+    }
+
+    .alert ul {
+        margin-bottom: 0;
+        padding-left: 22px;
+    }
+
+    @media (max-width: 760px) {
+        .detail-layout {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .detail-image img {
+            max-height: 520px;
+        }
+    }
+</style>
 @endsection
