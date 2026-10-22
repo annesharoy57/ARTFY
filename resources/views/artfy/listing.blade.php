@@ -1,3 +1,4 @@
+
 @extends('artfy.layout')
 
 @section('title', $title)
@@ -20,7 +21,7 @@
     .filter-bar {
         display: flex;
         align-items: center;
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
         gap: 10px;
         width: 100%;
         margin-top: 26px;
@@ -30,8 +31,8 @@
         position: relative;
         display: flex;
         align-items: center;
-        flex: 2 1 240px;
-        min-width: 150px;
+        flex: 2 1 220px;
+        min-width: 180px;
     }
 
     .filter-bar .search-field > span:first-child {
@@ -39,7 +40,7 @@
     }
 
     .filter-bar > label:not(.search-field) {
-        flex: 1 1 155px;
+        flex: 1 1 150px;
         min-width: 0;
     }
 
@@ -81,12 +82,7 @@
         background-color: #e6e9d8;
     }
 
-    /*
-     * FIX:
-     * Uploaded artwork cards use a clean background.
-     * Hide the decorative pseudo-elements only when a real
-     * uploaded image is present inside the card.
-     */
+    /* Hide decorative shapes behind uploaded artwork images */
     .artfy-card-visual:has(.artfy-card-photo)::before,
     .artfy-card-visual:has(.artfy-card-photo)::after {
         content: none !important;
@@ -101,13 +97,14 @@
         isolation: isolate;
     }
 
+    /* Show the entire uploaded image without cropping */
     .artfy-card-photo {
         position: absolute;
         inset: 0;
         display: block;
         width: 100%;
         height: 100%;
-        object-fit: cover;
+        object-fit: contain;
         object-position: center;
         z-index: 0;
     }
@@ -118,6 +115,7 @@
         z-index: 1;
     }
 
+    /* Keep artist photos styled as before */
     .artfy-artist-photo {
         display: block;
         width: 100%;
@@ -126,7 +124,6 @@
         border-radius: inherit;
     }
 
-    /* Keep artist-avatar decorative shapes hidden behind uploaded photos */
     .artist-avatar:has(.artfy-artist-photo)::before,
     .artist-avatar:has(.artfy-artist-photo)::after {
         content: none !important;
@@ -147,11 +144,11 @@
         }
 
         .filter-bar .search-field {
-            flex: 1.5 1 180px;
+            flex: 1 1 220px;
         }
 
         .filter-bar > label:not(.search-field) {
-            flex: 1 1 130px;
+            flex: 1 1 150px;
         }
 
         .filter-bar select,
@@ -209,37 +206,105 @@
                 >
             </label>
 
-            {{-- Art type --}}
+            {{-- Artwork format --}}
             <label>
-                <span class="visually-hidden">Art type</span>
+                <span class="visually-hidden">Artwork format</span>
 
-                <select name="art_type" aria-label="Art type">
-                    <option value="">All art types</option>
+                <select name="artwork_type" aria-label="Artwork format">
+                    <option value="">All Artworks</option>
 
-                    @foreach ([
-                        'Sketching',
-                        'Drawing',
-                        'Painting',
-                        'Oil Painting',
-                        'Oil',
-                        'Watercolor Painting',
-                        'Acrylic',
-                        'Digital Painting',
-                        'Digital',
-                        'Photography',
-                        'Illustration',
-                        '3D Art',
-                        'Sculpture',
-                        'Mixed Media',
-                        'Crafts'
-                    ] as $option)
-                        <option
-                            value="{{ $option }}"
-                            @selected(($artType ?? '') === $option)
-                        >
-                            {{ $option }}
-                        </option>
-                    @endforeach
+                    <option
+                        value="physical"
+                        @selected(($artworkFormat ?? '') === 'physical')
+                    >
+                        Physical Artwork
+                    </option>
+
+                    <option
+                        value="digital"
+                        @selected(($artworkFormat ?? '') === 'digital')
+                    >
+                        Digital Artwork
+                    </option>
+                </select>
+            </label>
+
+            {{-- Artistic medium --}}
+            <label>
+                <span class="visually-hidden">Artistic medium</span>
+
+                <select name="medium" aria-label="Artistic medium">
+                    <option value="">All Mediums</option>
+
+                    <option
+                        value="oil painting"
+                        @selected(($mediumFilter ?? '') === 'oil painting')
+                    >
+                        Oil Painting
+                    </option>
+
+                    <option
+                        value="watercolor painting"
+                        @selected(($mediumFilter ?? '') === 'watercolor painting')
+                    >
+                        Watercolor Painting
+                    </option>
+
+                    <option
+                        value="pastel painting"
+                        @selected(($mediumFilter ?? '') === 'pastel painting')
+                    >
+                        Pastel Painting
+                    </option>
+
+                    <option
+                        value="acrylic painting"
+                        @selected(($mediumFilter ?? '') === 'acrylic painting')
+                    >
+                        Acrylic Painting
+                    </option>
+
+                    <option
+                        value="ink wash painting"
+                        @selected(($mediumFilter ?? '') === 'ink wash painting')
+                    >
+                        Ink Wash / Literati Painting
+                    </option>
+
+                    <option
+                        value="encaustic painting"
+                        @selected(($mediumFilter ?? '') === 'encaustic painting')
+                    >
+                        Encaustic / Hot Wax Painting
+                    </option>
+
+                    <option
+                        value="spray painting"
+                        @selected(($mediumFilter ?? '') === 'spray painting')
+                    >
+                        Spray Painting
+                    </option>
+
+                    <option
+                        value="sketching"
+                        @selected(($mediumFilter ?? '') === 'sketching')
+                    >
+                        Sketching
+                    </option>
+
+                    <option
+                        value="photography"
+                        @selected(($mediumFilter ?? '') === 'photography')
+                    >
+                        Photography
+                    </option>
+
+                    <option
+                        value="digital painting"
+                        @selected(($mediumFilter ?? '') === 'digital painting')
+                    >
+                        Digital Painting
+                    </option>
                 </select>
             </label>
 
@@ -248,14 +313,12 @@
                 <span class="visually-hidden">Maximum budget</span>
 
                 <select name="max_price" aria-label="Maximum budget">
-                    <option value="">Any price</option>
+                    <option value="">Any Price</option>
 
                     @foreach ([2000, 3000, 5000, 10000, 20000] as $amount)
                         <option
                             value="{{ $amount }}"
-                            @selected(
-                                (string) ($maxPrice ?? '') === (string) $amount
-                            )
+                            @selected((string) ($maxPrice ?? '') === (string) $amount)
                         >
                             Up to ৳{{ number_format($amount) }}
                         </option>
@@ -313,6 +376,7 @@
                 if (!filters) {
                     return;
                 }
+
                 filters.querySelectorAll('select').forEach(function (select) {
                     select.addEventListener('change', function () {
                         filters.requestSubmit();
@@ -345,7 +409,7 @@
 
             <h2>No matches just yet</h2>
 
-            <p>Try choosing another art type or a different budget.</p>
+            <p>Try changing the format, medium, or budget.</p>
 
             <a
                 class="button button-dark"
@@ -362,14 +426,6 @@
                     class="art-card"
                     href="{{ route('artworks.show', $item['slug']) }}"
                 >
-                    {{--
-                        Uploaded image:
-                        Do not add artwork-art because it creates
-                        the default decorative shapes.
-
-                        No uploaded image:
-                        Keep artwork-art to preserve the default design.
-                    --}}
                     <div
                         class="art-card-image artfy-card-visual {{ empty($item['image']) ? 'artwork-art ' . ($item['color'] ?? 'green') : '' }}"
                     >

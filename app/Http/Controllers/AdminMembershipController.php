@@ -23,7 +23,6 @@ class AdminMembershipController extends Controller
 
     /**
      * Main admin dashboard overview.
-     * Shows membership and membership-payment statistics only.
      */
     public function index()
     {
@@ -47,12 +46,10 @@ class AdminMembershipController extends Controller
             ->where('status', 'rejected')
             ->count();
 
+        // Approved applications that have not completed payment.
         $paymentsToVerify = $applications
-            ->filter(function ($application) {
-                return $application->status === 'approved'
-                    && $application->payment_status === 'pending'
-                    && filled($application->payment_reference);
-            })
+            ->where('status', 'approved')
+            ->where('payment_status', 'pending')
             ->count();
 
         $totalPayments = $applications
@@ -70,11 +67,7 @@ class AdminMembershipController extends Controller
     }
 
     /**
-     * Dedicated verified artwork sales and commission page.
-     *
-     * Includes only verified artwork orders.
-     * Reads the existing recorded amounts without recalculating
-     * or overwriting historical commissions.
+     * Verified artwork sales and commissions.
      */
     public function sales()
     {
@@ -85,8 +78,7 @@ class AdminMembershipController extends Controller
 
         $totalSoldArtworks = (clone $verifiedOrders)->count();
 
-        $totalSalesValue = (clone $verifiedOrders)
-            ->sum('price');
+        $totalSalesValue = (clone $verifiedOrders)->sum('price');
 
         $totalCommissionEarned = (clone $verifiedOrders)
             ->sum('commission_amount');
@@ -110,7 +102,7 @@ class AdminMembershipController extends Controller
     }
 
     /**
-     * Dedicated artist membership applications page.
+     * Artist membership applications.
      */
     public function memberships()
     {
@@ -124,7 +116,9 @@ class AdminMembershipController extends Controller
     }
 
     /**
-     * Dedicated membership payment verification page.
+     * Membership payments awaiting completion.
+     *
+     * This is not a manual transaction-verification queue.
      */
     public function payments()
     {
@@ -133,8 +127,6 @@ class AdminMembershipController extends Controller
         $applications = ArtistMembershipApplication::with('user')
             ->where('status', 'approved')
             ->where('payment_status', 'pending')
-            ->whereNotNull('payment_reference')
-            ->where('payment_reference', '!=', '')
             ->latest()
             ->paginate(12);
 
@@ -142,7 +134,7 @@ class AdminMembershipController extends Controller
     }
 
     /**
-     * Dedicated reports and activity page.
+     * Membership reports and activity.
      */
     public function reports()
     {
@@ -174,8 +166,6 @@ class AdminMembershipController extends Controller
             'approved'
         )
             ->where('payment_status', 'pending')
-            ->whereNotNull('payment_reference')
-            ->where('payment_reference', '!=', '')
             ->count();
 
         $totalPayments = ArtistMembershipApplication::where(
@@ -196,6 +186,7 @@ class AdminMembershipController extends Controller
 
     /**
      * Approve an artist membership application.
+     * Approval does not activate paid membership.
      */
     public function approve(
         Request $request,
@@ -218,12 +209,14 @@ class AdminMembershipController extends Controller
         $application->admin_notes = $validated['admin_notes'] ?? null;
         $application->save();
 
-        $application->user->membership_status = 'approved';
-        $application->user->save();
+        // Payment must still be verified by SSLCOMMERZ.
+        $user = $application->user;
+        $user->membership_status = 'pending';
+        $user->save();
 
         return back()->with(
             'success',
-            'Artist membership approved. Payment must be verified separately.'
+            'Application approved. The artist can now pay the membership fee online.'
         );
     }
 
@@ -251,49 +244,13 @@ class AdminMembershipController extends Controller
         $application->admin_notes = $validated['admin_notes'];
         $application->save();
 
-        $application->user->membership_status = 'rejected';
-        $application->user->save();
+        $user = $application->user;
+        $user->membership_status = 'rejected';
+        $user->save();
 
         return back()->with(
             'success',
             'Artist membership application rejected.'
-        );
-    }
-
-    /**
-     * Verify a membership payment after manually checking
-     * the submitted transaction reference.
-     */
-    public function verifyPayment(
-        Request $request,
-        ArtistMembershipApplication $application
-    ) {
-        $this->checkAdmin();
-
-        if ($application->status !== 'approved') {
-            return back()->with(
-                'error',
-                'Approve the artist membership before verifying payment.'
-            );
-        }
-
-        if (
-            $application->payment_status !== 'pending'
-            || blank($application->payment_reference)
-        ) {
-            return back()->with(
-                'error',
-                'No submitted transaction ID is awaiting verification.'
-            );
-        }
-
-        $application->payment_status = 'verified';
-        $application->payment_verified_at = now();
-        $application->save();
-
-        return back()->with(
-            'success',
-            'Payment marked as verified. The artist can now access Artist Studio.'
         );
     }
 }

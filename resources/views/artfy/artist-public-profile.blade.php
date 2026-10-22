@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -12,7 +11,9 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
-        * { box-sizing: border-box; }
+        * {
+            box-sizing: border-box;
+        }
 
         body {
             margin: 0;
@@ -55,10 +56,10 @@
         }
 
         .cover {
+            display: block;
             width: 100%;
             height: 260px;
             object-fit: cover;
-            display: block;
             background: #dfe2d2;
             border-radius: 18px 18px 0 0;
         }
@@ -115,6 +116,7 @@
         h1 {
             margin: 8px 0;
             font-size: clamp(32px, 5vw, 46px);
+            overflow-wrap: anywhere;
         }
 
         .discipline {
@@ -144,6 +146,7 @@
             border-radius: 8px;
             color: #414c2c;
             font-size: 14px;
+            overflow-wrap: anywhere;
         }
 
         .portfolio-link:hover {
@@ -173,42 +176,114 @@
             color: #72795f;
         }
 
+        .section-count {
+            color: #72795f;
+            font-size: 13px;
+        }
+
+        .artwork-section + .artwork-section {
+            margin-top: 46px;
+            padding-top: 32px;
+            border-top: 1px solid #e6e3d9;
+        }
+
         .art-grid {
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 22px;
+            align-items: stretch;
         }
 
         .art-card {
+            display: flex;
+            flex-direction: column;
             min-width: 0;
             overflow: hidden;
             background: #fffdf9;
             border: 1px solid #e9e5dc;
             border-radius: 14px;
-            transition: transform .2s ease;
+            transition: transform .2s ease, box-shadow .2s ease;
         }
 
         .art-card:hover {
             transform: translateY(-4px);
+            box-shadow: 0 8px 22px rgba(65, 76, 44, 0.09);
+        }
+
+        /*
+         * All artwork images use the same display area.
+         * "contain" shows the entire image without cropping,
+         * stretching, or zooming it.
+         */
+        .art-image-wrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 260px;
+            padding: 10px;
+            overflow: hidden;
+            background: #eeeee4;
         }
 
         .art-image {
             display: block;
             width: 100%;
-            aspect-ratio: 4 / 3;
-            object-fit: cover;
-            background: #eeeee4;
+            height: 100%;
+            object-fit: contain;
+            object-position: center;
+            background: transparent;
         }
 
         .art-image-placeholder {
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 20px;
             color: #72795f;
             font-size: 14px;
+            text-align: center;
+        }
+
+        .art-status {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            z-index: 1;
+            display: inline-block;
+            padding: 7px 11px;
+            border-radius: 6px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .status-available {
+            background: #e8eddf;
+            color: #414c2c;
+            border: 1px solid #cbd4bd;
+        }
+
+        .status-sold {
+            background: #414c2c;
+            color: #fffdf9;
+            border: 1px solid #414c2c;
+        }
+
+        .sold-card {
+            border-color: #c9cbbd;
+        }
+
+        /* Do not apply filters or zoom to sold artwork images. */
+        .sold-card .art-image {
+            filter: none;
         }
 
         .art-info {
+            flex: 1;
             padding: 16px;
         }
 
@@ -228,6 +303,15 @@
             font-weight: 700;
         }
 
+        .sold-label {
+            margin: 12px 0 0;
+            color: #72795f;
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
         .empty {
             grid-column: 1 / -1;
             padding: 38px 20px;
@@ -236,6 +320,14 @@
             text-align: center;
             color: #72795f;
             line-height: 1.8;
+        }
+
+        .empty strong {
+            color: #414c2c;
+        }
+
+        .empty p {
+            margin-bottom: 0;
         }
 
         .footer {
@@ -247,22 +339,76 @@
         }
 
         @media (max-width: 700px) {
-            .container { margin-top: 24px; }
-            .cover { height: 190px; }
-            .profile-content { padding: 0 20px 30px; }
-            .art-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .container {
+                margin-top: 24px;
+            }
+
+            .cover {
+                height: 190px;
+            }
+
+            .profile-content {
+                padding: 0 20px 30px;
+            }
+
+            .art-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 16px;
+            }
+
+            .art-image-wrap {
+                height: 220px;
+            }
+
+            .portfolio-heading h2 {
+                font-size: 28px;
+            }
+
+            .artwork-section + .artwork-section {
+                margin-top: 34px;
+                padding-top: 26px;
+            }
         }
 
         @media (max-width: 460px) {
-            .topbar { padding: 18px; }
-            .brand { font-size: 23px; }
-            .back-link { font-size: 12px; }
-            .art-grid { grid-template-columns: 1fr; }
+            .topbar {
+                padding: 18px;
+            }
+
+            .brand {
+                font-size: 23px;
+            }
+
+            .back-link {
+                font-size: 12px;
+            }
+
+            .container {
+                padding-right: 16px;
+                padding-left: 16px;
+            }
+
+            .art-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .art-image-wrap {
+                height: 260px;
+            }
+
+            .portfolio-heading h2 {
+                font-size: 26px;
+            }
         }
     </style>
 </head>
 
 <body>
+    @php
+        $availableArtworks = $artworks->where('status', 'available');
+        $soldArtworks = $artworks->where('status', 'sold');
+    @endphp
+
     <header class="topbar">
         <a class="brand" href="{{ route('home') }}">ARTFY</a>
 
@@ -272,8 +418,9 @@
     </header>
 
     <main class="container">
+        {{-- ARTIST PROFILE --}}
         <section class="profile">
-            @if(!empty($coverPhoto))
+            @if (!empty($coverPhoto))
                 <img
                     class="cover"
                     src="{{ asset('storage/' . $coverPhoto) }}"
@@ -284,7 +431,7 @@
             @endif
 
             <div class="profile-content">
-                @if(!empty($profilePhoto))
+                @if (!empty($profilePhoto))
                     <img
                         class="avatar"
                         src="{{ asset('storage/' . $profilePhoto) }}"
@@ -302,7 +449,7 @@
 
                 <p class="discipline">{{ $discipline }}</p>
 
-                @if(!empty($location))
+                @if (!empty($location))
                     <p class="location">
                         &#9906; {{ $location }}
                     </p>
@@ -310,33 +457,39 @@
 
                 <p class="bio">{{ $bio }}</p>
 
-                @if(!empty($portfolioUrl))
+                @if (!empty($portfolioUrl))
                     @php
-                        $portfolioHost = parse_url($portfolioUrl, PHP_URL_HOST);
+                        $portfolioScheme = parse_url(
+                            $portfolioUrl,
+                            PHP_URL_SCHEME
+                        );
+
                         $safePortfolioUrl = in_array(
-                            parse_url($portfolioUrl, PHP_URL_SCHEME),
+                            strtolower((string) $portfolioScheme),
                             ['http', 'https'],
                             true
                         ) ? $portfolioUrl : null;
                     @endphp
 
-                    @if($safePortfolioUrl)
+                    @if ($safePortfolioUrl)
                         <a
                             class="portfolio-link"
                             href="{{ $safePortfolioUrl }}"
                             target="_blank"
                             rel="noopener noreferrer"
                         >
-                            Visit external portfolio
+                            Visit external portfolio ↗
                         </a>
                     @endif
                 @endif
             </div>
         </section>
 
-        <section class="portfolio">
+        {{-- ARTIST PORTFOLIO --}}
+        <section class="portfolio" id="artist-portfolio">
             <div class="portfolio-heading">
                 <div>
+                    <p class="eyebrow">EXPLORE THE COLLECTION</p>
                     <h2>Artist Portfolio</h2>
                     <p class="muted">
                         Original work by {{ $artistName }}
@@ -349,49 +502,132 @@
                 </span>
             </div>
 
-            <div class="art-grid">
-                @forelse($artworks as $artwork)
-                    <a
-                        class="art-card"
-                        href="{{ route('artworks.show', ['slug' => 'uploaded-' . $artwork->id]) }}"
-                    >
-                        @if(!empty($artwork->image))
-                            <img
-                                class="art-image"
-                                src="{{ asset('storage/' . $artwork->image) }}"
-                                alt="{{ $artwork->title }}"
-                                loading="lazy"
-                            >
-                        @else
-                            <div class="art-image art-image-placeholder">
-                                Artwork image unavailable
-                            </div>
-                        @endif
-
-                        <div class="art-info">
-                            <h3>{{ $artwork->title }}</h3>
-
-                            @if($artwork->category)
-                                <p class="muted">{{ $artwork->category }}</p>
-                            @endif
-
-                            @if($artwork->price !== null)
-                                <p class="price">
-                                    ৳{{ number_format((float) $artwork->price, 2) }}
-                                </p>
-                            @endif
-                        </div>
-                    </a>
-                @empty
-                    <div class="empty">
-                        <strong>No published artworks yet.</strong>
-                        <p>
-                            This artist's approved artworks will appear here
-                            when they have published work.
+            {{-- AVAILABLE ARTWORKS --}}
+            <section class="artwork-section" id="available-artworks">
+                <div class="portfolio-heading">
+                    <div>
+                        <h2>Available Artworks</h2>
+                        <p class="muted">
+                            Discover pieces available to purchase.
                         </p>
                     </div>
-                @endforelse
-            </div>
+
+                    <span class="section-count">
+                        {{ $availableArtworks->count() }}
+                        {{ $availableArtworks->count() === 1 ? 'available artwork' : 'available artworks' }}
+                    </span>
+                </div>
+
+                <div class="art-grid">
+                    @forelse ($availableArtworks as $artwork)
+                        <a
+                            class="art-card"
+                            href="{{ route('artworks.show', ['slug' => 'uploaded-' . $artwork->id]) }}"
+                        >
+                            <div class="art-image-wrap">
+                                @if (!empty($artwork->image))
+                                    <img
+                                        class="art-image"
+                                        src="{{ asset('storage/' . $artwork->image) }}"
+                                        alt="{{ $artwork->title }}"
+                                        loading="lazy"
+                                    >
+                                @else
+                                    <div class="art-image art-image-placeholder">
+                                        Artwork image unavailable
+                                    </div>
+                                @endif
+
+                                <span class="art-status status-available">
+                                    Available
+                                </span>
+                            </div>
+
+                            <div class="art-info">
+                                <h3>{{ $artwork->title }}</h3>
+
+                                @if ($artwork->category)
+                                    <p class="muted">{{ $artwork->category }}</p>
+                                @endif
+
+                                @if ($artwork->price !== null)
+                                    <p class="price">
+                                        ৳{{ number_format((float) $artwork->price, 2) }}
+                                    </p>
+                                @endif
+                            </div>
+                        </a>
+                    @empty
+                        <div class="empty">
+                            <strong>No available artworks right now.</strong>
+                            <p>Check back later for new work from this artist.</p>
+                        </div>
+                    @endforelse
+                </div>
+            </section>
+
+            {{-- SOLD ARTWORKS --}}
+            <section class="artwork-section" id="sold-artworks">
+                <div class="portfolio-heading">
+                    <div>
+                        <h2>Sold Out</h2>
+                        <p class="muted">
+                            Previously available pieces from this artist.
+                        </p>
+                    </div>
+
+                    <span class="section-count">
+                        {{ $soldArtworks->count() }}
+                        {{ $soldArtworks->count() === 1 ? 'sold artwork' : 'sold artworks' }}
+                    </span>
+                </div>
+
+                <div class="art-grid">
+                    @forelse ($soldArtworks as $artwork)
+                        <a
+                            class="art-card sold-card"
+                            href="{{ route('artworks.show', ['slug' => 'uploaded-' . $artwork->id]) }}"
+                        >
+                            <div class="art-image-wrap">
+                                @if (!empty($artwork->image))
+                                    <img
+                                        class="art-image"
+                                        src="{{ asset('storage/' . $artwork->image) }}"
+                                        alt="{{ $artwork->title }}"
+                                        loading="lazy"
+                                    >
+                                @else
+                                    <div class="art-image art-image-placeholder">
+                                        Artwork image unavailable
+                                    </div>
+                                @endif
+
+                                <span class="art-status status-sold">
+                                    Sold Out
+                                </span>
+                            </div>
+
+                            <div class="art-info">
+                                <h3>{{ $artwork->title }}</h3>
+
+                                @if ($artwork->category)
+                                    <p class="muted">{{ $artwork->category }}</p>
+                                @endif
+
+                                <p class="sold-label">Sold</p>
+                            </div>
+                        </a>
+                    @empty
+                        <div class="empty">
+                            <strong>No sold artworks yet.</strong>
+                            <p>
+                                Sold pieces will appear here after their status
+                                is updated in the database.
+                            </p>
+                        </div>
+                    @endforelse
+                </div>
+            </section>
         </section>
     </main>
 

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -47,6 +48,17 @@ class User extends Authenticatable
     public function artworks(): HasMany
     {
         return $this->hasMany(Artwork::class);
+    }
+
+    /**
+     * Use the custom notification model to generate UUIDs.
+     */
+    public function notifications(): MorphMany
+    {
+        return $this->morphMany(
+            ArtfyDatabaseNotificationModel::class,
+            'notifiable'
+        )->latest();
     }
 
     public function isAdmin(): bool

@@ -6,7 +6,7 @@
 
     <title>Artist Membership Application | Artfy</title>
 
-    <link rel="stylesheet" href="{{ asset('css/artfy.css') }}?v=20261016-payment">
+    <link rel="stylesheet" href="{{ asset('css/artfy.css') }}?v=20261022-membership-payment">
 
     <style>
         .artist-application-page {
@@ -62,13 +62,13 @@
             margin-bottom: 21px;
         }
 
-        .application-field label {
+        .application-field > label {
             display: block;
             margin-bottom: 8px;
             font-weight: 600;
         }
 
-        .application-field input,
+        .application-field input:not([type="checkbox"]),
         .application-field textarea,
         .application-field select {
             width: 100%;
@@ -113,10 +113,16 @@
             font-weight: 700;
             cursor: pointer;
             text-align: center;
+            text-decoration: none;
         }
 
         .application-button:hover {
             background: #414c2c;
+        }
+
+        .application-button:disabled {
+            cursor: not-allowed;
+            opacity: 0.65;
         }
 
         .application-alert {
@@ -124,14 +130,17 @@
             padding: 14px 16px;
             border-radius: 9px;
             line-height: 1.6;
+            overflow-wrap: anywhere;
         }
 
-        .application-success {
+        .application-success,
+        .payment-notice {
             background: #e8efdf;
             color: #314322;
         }
 
-        .application-error {
+        .application-error,
+        .payment-warning {
             background: #f8e6e1;
             color: #8b2f22;
         }
@@ -188,39 +197,19 @@
             margin-top: 20px;
         }
 
-        .payment-form label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-        }
-
-        .payment-form input {
-            display: block;
-            width: 100%;
-            box-sizing: border-box;
-            margin-bottom: 16px;
-            padding: 13px 14px;
-            border: 1px solid #cdd1bd;
-            border-radius: 9px;
-            background: #fff;
-            color: #414c2c;
-            font: inherit;
-        }
-
-        .payment-notice {
+        .payment-notice,
+        .payment-warning {
             padding: 13px;
             border-radius: 9px;
-            background: #e8efdf;
-            color: #314322;
             line-height: 1.7;
             overflow-wrap: anywhere;
         }
 
-        .payment-warning {
-            padding: 13px;
+        .payment-method-note {
+            margin: 16px 0;
+            padding: 14px;
+            background: #f0f0e5;
             border-radius: 9px;
-            background: #f8e6e1;
-            color: #8b2f22;
             line-height: 1.7;
         }
 
@@ -252,334 +241,339 @@
 </head>
 
 <body>
-    <main class="artist-application-page">
-        <div class="application-container">
+<main class="artist-application-page">
+    <div class="application-container">
 
-            <a href="{{ route('home') }}" class="application-back">
-                &larr; Back to Artfy
-            </a>
+        <a href="{{ route('home') }}" class="application-back">
+            &larr; Back to Artfy
+        </a>
 
-            <section class="application-card">
+        <section class="application-card">
 
-                <span class="application-eyebrow">
-                    Artfy Artist Membership
-                </span>
+            <span class="application-eyebrow">
+                Artfy Artist Membership
+            </span>
 
-                <h1>Share your art with the world.</h1>
+            <h1>Share your art with the world.</h1>
 
-                <p class="application-description">
-                    Complete your artist membership application.
-                    Our Admin team will review your information.
-                    Artist Studio access becomes available after membership
-                    approval and payment verification.
-                </p>
+            <p class="application-description">
+                Complete your artist membership application.
+                Our Admin team will review your information.
+                Artist Studio access becomes available after membership
+                approval and successful payment verification.
+            </p>
 
-                {{-- Success message --}}
-                @if (session('success'))
-                    <div class="application-alert application-success">
-                        {{ session('success') }}
-                    </div>
-                @endif
+            @if (session('success'))
+                <div class="application-alert application-success">
+                    {{ session('success') }}
+                </div>
+            @endif
 
-                {{-- General error message --}}
-                @if (session('error'))
-                    <div class="application-alert application-error">
-                        {{ session('error') }}
-                    </div>
-                @endif
+            @if (session('error'))
+                <div class="application-alert application-error">
+                    {{ session('error') }}
+                </div>
+            @endif
 
-                {{-- Validation errors --}}
-                @if ($errors->any())
-                    <div class="application-alert application-error">
-                        <strong>Please correct the following:</strong>
+            @if ($errors->any())
+                <div class="application-alert application-error">
+                    <strong>Please correct the following:</strong>
+                    <ul>
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
 
-                        <ul>
-                            @foreach ($errors->all() as $error)
-                                <li>{{ $error }}</li>
-                            @endforeach
-                        </ul>
-                    </div>
-                @endif
+            {{-- EXISTING APPLICATION --}}
+            @if ($application)
 
-                {{-- EXISTING APPLICATION --}}
-                @if ($application)
+                <div class="application-status">
+                    <h2>Application Status</h2>
 
-                    <div class="application-status">
-                        <h2>Application Status</h2>
+                    <p>
+                        <strong>Artist name:</strong>
+                        {{ $application->artist_name }}
+                    </p>
 
+                    <p>
+                        <strong>Art categories:</strong>
+                        {{ count($application->art_categories ?? []) > 0
+                            ? implode(', ', $application->art_categories)
+                            : $application->art_category }}
+                    </p>
+
+                    <p>
+                        <strong>Membership review:</strong>
+                        {{ ucfirst($application->status) }}
+                    </p>
+
+                    <p>
+                        <strong>Payment status:</strong>
+                        {{ ucfirst($application->payment_status) }}
+                    </p>
+
+                    @if ($application->admin_notes)
                         <p>
-                            <strong>Artist name:</strong>
-                            {{ $application->artist_name }}
+                            <strong>Admin feedback:</strong>
+                            {{ $application->admin_notes }}
+                        </p>
+                    @endif
+
+                    @if (
+                        $application->status === 'approved' &&
+                        $application->payment_status === 'verified'
+                    )
+                        <p class="payment-notice">
+                            Your membership payment has been verified.
+                            You can now access Artist Studio.
                         </p>
 
-                        <p>
-                            <strong>Art categories:</strong>
-                            {{ count($application->art_categories ?? []) > 0
-                                ? implode(', ', $application->art_categories)
-                                : $application->art_category }}
+                        <a href="{{ route('artist.studio') }}">
+                            Go to Artist Studio &rarr;
+                        </a>
+                    @elseif ($application->status === 'rejected')
+                        <p class="payment-warning">
+                            Your application was rejected.
+                            Please review the Admin feedback or contact
+                            the Admin for clarification.
                         </p>
-
+                    @elseif ($application->status === 'pending')
                         <p>
-                            <strong>Membership review:</strong>
-                            {{ ucfirst($application->status) }}
+                            Your application is awaiting Admin review.
+                            Online membership payment will be available
+                            after approval.
                         </p>
+                    @endif
+                </div>
 
-                        <p>
-                            <strong>Payment verification:</strong>
-                            {{ ucfirst($application->payment_status) }}
-                        </p>
+                {{-- MEMBERSHIP PAYMENT --}}
+                <div class="membership-fee-card">
+                    <h2>Artist Membership Payment</h2>
 
-                        @if ($application->admin_notes)
-                            <p>
-                                <strong>Admin feedback:</strong>
-                                {{ $application->admin_notes }}
-                            </p>
-                        @endif
+                    <p>Annual membership fee</p>
 
-                        @if (
-                            $application->status === 'approved' &&
-                            $application->payment_status === 'verified'
-                        )
-                            <p class="payment-notice">
-                                Your membership and payment have both been verified.
-                                You can now access Artist Studio.
-                            </p>
-
-                            <a href="{{ route('artist.studio') }}">
-                                Go to Artist Studio &rarr;
-                            </a>
-                        @else
-                            <p>
-                                Your application is being processed.
-                                You can check this page for updates.
-                            </p>
-                        @endif
+                    <div class="membership-fee">
+                        ৳{{ number_format($application->membership_fee ?? 1000) }}
+                        <span style="font-size: 15px; font-weight: 400;">
+                            / year
+                        </span>
                     </div>
 
-                    {{-- MEMBERSHIP PAYMENT SECTION --}}
-                    <div class="membership-fee-card">
+                    @if (
+                        $application->status === 'approved' &&
+                        $application->payment_status === 'verified'
+                    )
+                        <p class="payment-notice">
+                            Your membership payment has been verified.
+                            Thank you for supporting Artfy.
+                        </p>
 
-                        <h2>Artist Membership Payment</h2>
+                    @elseif ($application->status !== 'approved')
 
-                        <p>Annual membership fee</p>
-
-                        <div class="membership-fee">
-                            ৳{{ number_format($application->membership_fee ?? 1000) }}
-                            <span style="font-size: 15px; font-weight: 400;">
-                                / year
-                            </span>
-                        </div>
-
-                        @if ($application->payment_status === 'verified')
-
-                            <p class="payment-notice">
-                                Your payment has been verified by the Admin.
-                                Thank you for supporting Artfy.
-                            </p>
-
-                        @elseif ($application->payment_status === 'pending')
-
-                            <p class="payment-notice">
-                                Your transaction ID has been submitted.
-                                The Admin is reviewing your payment.
-                            </p>
-
-                            <p>
-                                <strong>Submitted transaction ID:</strong><br>
-                                {{ $application->payment_reference ?: 'Not available' }}
-                            </p>
-
-                        @else
-
+                        <p class="payment-warning">
                             @if ($application->status === 'rejected')
-                                <p class="payment-warning">
-                                    Your membership application has been rejected.
-                                    Please contact the Admin for clarification
-                                    before making any payment.
-                                </p>
+                                Payment is unavailable because your
+                                application has been rejected.
                             @else
-                                <p>
-                                    Submit your transaction ID after making your
-                                    membership payment using the payment details
-                                    provided by the Artfy Admin.
-                                </p>
-
-                                <p class="payment-warning">
-                                    Payment receiver details have not yet been
-                                    displayed on this page. Do not send money
-                                    until the official payment instructions are
-                                    provided.
-                                </p>
-
-                                <form
-                                    action="{{ route('artist.application.payment') }}"
-                                    method="POST"
-                                    class="payment-form"
-                                >
-                                    @csrf
-
-                                    <label for="payment_reference">
-                                        Payment Transaction ID
-                                    </label>
-
-                                    <input
-                                        type="text"
-                                        id="payment_reference"
-                                        name="payment_reference"
-                                        value="{{ old('payment_reference') }}"
-                                        maxlength="255"
-                                        placeholder="Enter your transaction ID"
-                                        required
-                                    >
-
-                                    <button
-                                        type="submit"
-                                        class="application-button"
-                                    >
-                                        Submit Transaction ID
-                                    </button>
-                                </form>
+                                Please wait for Admin approval before
+                                making your membership payment.
                             @endif
+                        </p>
 
-                        @endif
-                    </div>
+                    @elseif ($application->payment_status === 'pending')
 
-                @else
-
-                    {{-- NEW APPLICATION FORM --}}
-                    <div class="membership-fee-card">
-                        <h2>Annual Artist Membership</h2>
-
-                        <p>Annual membership fee</p>
-
-                        <div class="membership-fee">
-                            ৳{{ number_format(config('services.artfy_membership.annual_fee', 1000)) }}
-                            <span style="font-size: 15px; font-weight: 400;">
-                                / year
-                            </span>
-                        </div>
+                        <p class="payment-notice">
+                            Your checkout has been initiated or is awaiting
+                            confirmation. Membership will activate only after
+                            Artfy verifies the payment with SSLCOMMERZ.
+                        </p>
 
                         <p>
-                            Your application will be reviewed by the Admin.
-                            Submit payment details separately when the official
-                            payment instructions are available.
+                            <strong>Payment reference:</strong><br>
+                            {{ $application->payment_reference ?: 'Pending' }}
                         </p>
+
+                        <div class="payment-method-note">
+                            If you left the gateway without completing payment,
+                            return to checkout using the button below. If a
+                            previous payment may have succeeded, check with
+                            Artfy support before attempting another payment.
+                        </div>
+
+                        <form
+                            action="{{ route('artist.application.payment.store') }}"
+                            method="POST"
+                            class="payment-form"
+                        >
+                            @csrf
+
+                            <button type="submit" class="application-button">
+                                Continue to SSLCOMMERZ Checkout
+                            </button>
+                        </form>
+
+                    @else
+
+                        <p>
+                            Your application has been approved. You can now
+                            pay the annual membership fee securely through
+                            SSLCOMMERZ.
+                        </p>
+
+                        <div class="payment-method-note">
+                            You will be redirected to the SSLCOMMERZ payment
+                            page. Artfy will verify the payment with the
+                            gateway before activating your membership.
+                        </div>
+
+                        <form
+                            action="{{ route('artist.application.payment.store') }}"
+                            method="POST"
+                            class="payment-form"
+                        >
+                            @csrf
+
+                            <button type="submit" class="application-button">
+                                Pay Membership Fee with SSLCOMMERZ
+                            </button>
+                        </form>
+
+                    @endif
+                </div>
+
+            @else
+
+                {{-- NEW APPLICATION --}}
+                <div class="membership-fee-card">
+                    <h2>Annual Artist Membership</h2>
+
+                    <p>Annual membership fee</p>
+
+                    <div class="membership-fee">
+                        ৳{{ number_format(config('services.artfy_membership.annual_fee', 1000)) }}
+                        <span style="font-size: 15px; font-weight: 400;">
+                            / year
+                        </span>
                     </div>
 
-                    <form
-                        action="{{ route('artist.application.submit') }}"
-                        method="POST"
-                    >
-                        @csrf
+                    <p>
+                        Submit your application for Admin review.
+                        If approved, you can pay online through SSLCOMMERZ.
+                    </p>
+                </div>
 
-                        <div class="application-field">
-                            <label for="artist_name">
-                                Artist or Professional Name *
-                            </label>
+                <form
+                    action="{{ route('artist.application.submit') }}"
+                    method="POST"
+                >
+                    @csrf
 
-                            <input
-                                type="text"
-                                id="artist_name"
-                                name="artist_name"
-                                value="{{ old('artist_name') }}"
-                                maxlength="255"
-                                required
-                            >
-                        </div>
+                    <div class="application-field">
+                        <label for="artist_name">
+                            Artist or Professional Name *
+                        </label>
 
-                        <div class="application-field">
-                            <label for="biography">
-                                About You and Your Art *
-                            </label>
-
-                            <textarea
-                                id="biography"
-                                name="biography"
-                                maxlength="5000"
-                                required
-                            >{{ old('biography') }}</textarea>
-
-                            <small class="application-help">
-                                Describe your artistic background, style,
-                                experience, and creative interests.
-                            </small>
-                        </div>
-
-                        <div class="application-field">
-                            <label>
-                                Art Categories * (Select all that apply)
-                            </label>
-
-                            @php
-                                $categories = [
-                                    'Painting',
-                                    'Photography',
-                                    'Digital Art',
-                                    'Illustration',
-                                    'Sculpture',
-                                    'Mixed Media',
-                                    'Drawing',
-                                    'Printmaking',
-                                    'Crafts',
-                                    'Other',
-                                ];
-
-                                $selectedCategories = old('art_categories', []);
-                            @endphp
-
-                            @foreach ($categories as $category)
-                                <label style="display: flex; align-items: center; gap: 10px; margin: 12px 0; font-weight: 400;">
-                                    <input
-                                        type="checkbox"
-                                        name="art_categories[]"
-                                        value="{{ $category }}"
-                                        style="width: auto;"
-                                        @checked(in_array($category, $selectedCategories))
-                                    >
-
-                                    {{ $category }}
-                                </label>
-                            @endforeach
-                        </div>
-
-                        <div class="application-field">
-                            <label for="portfolio_url">
-                                Portfolio Link (Optional)
-                            </label>
-
-                            <input
-                                type="url"
-                                id="portfolio_url"
-                                name="portfolio_url"
-                                value="{{ old('portfolio_url') }}"
-                                maxlength="255"
-                                placeholder="https://example.com/your-portfolio"
-                            >
-
-                            <small class="application-help">
-                                Add a link to your portfolio or existing art profile.
-                            </small>
-                        </div>
-
-                        <button
-                            type="submit"
-                            class="application-button"
+                        <input
+                            type="text"
+                            id="artist_name"
+                            name="artist_name"
+                            value="{{ old('artist_name') }}"
+                            maxlength="255"
+                            required
                         >
-                            Submit Membership Application
-                        </button>
-                    </form>
+                    </div>
 
-                @endif
+                    <div class="application-field">
+                        <label for="biography">
+                            About You and Your Art *
+                        </label>
 
-            </section>
+                        <textarea
+                            id="biography"
+                            name="biography"
+                            maxlength="5000"
+                            required
+                        >{{ old('biography') }}</textarea>
 
-            <div class="application-footer">
-                <a href="{{ route('home') }}">
-                    Return to Discover
-                </a>
-            </div>
+                        <small class="application-help">
+                            Describe your artistic background, style,
+                            experience, and creative interests.
+                        </small>
+                    </div>
 
+                    <div class="application-field">
+                        <label>
+                            Art Categories * (Select all that apply)
+                        </label>
+
+                        @php
+                            $categories = [
+                                'Painting',
+                                'Photography',
+                                'Digital Art',
+                                'Illustration',
+                                'Sculpture',
+                                'Mixed Media',
+                                'Drawing',
+                                'Printmaking',
+                                'Crafts',
+                                'Other',
+                            ];
+
+                            $selectedCategories = old('art_categories', []);
+                        @endphp
+
+                        @foreach ($categories as $category)
+                            <label style="display: flex; align-items: center; gap: 10px; margin: 12px 0; font-weight: 400;">
+                                <input
+                                    type="checkbox"
+                                    name="art_categories[]"
+                                    value="{{ $category }}"
+                                    style="width: auto;"
+                                    @checked(in_array($category, $selectedCategories))
+                                >
+                                {{ $category }}
+                            </label>
+                        @endforeach
+                    </div>
+
+                    <div class="application-field">
+                        <label for="portfolio_url">
+                            Portfolio Link (Optional)
+                        </label>
+
+                        <input
+                            type="url"
+                            id="portfolio_url"
+                            name="portfolio_url"
+                            value="{{ old('portfolio_url') }}"
+                            maxlength="255"
+                            placeholder="https://example.com/your-portfolio"
+                        >
+
+                        <small class="application-help">
+                            Add a link to your portfolio or existing art profile.
+                        </small>
+                    </div>
+
+                    <button type="submit" class="application-button">
+                        Submit Membership Application
+                    </button>
+                </form>
+
+            @endif
+
+        </section>
+
+        <div class="application-footer">
+            <a href="{{ route('home') }}">
+                Return to Discover
+            </a>
         </div>
-    </main>
+
+    </div>
+</main>
 </body>
 </html>
