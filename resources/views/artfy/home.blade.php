@@ -4,44 +4,20 @@
 
 @section('content')
 
-    {{-- ================= PERSONALIZED WELCOME ================= --}}
+    {{-- PERSONALIZED WELCOME --}}
     @auth
         @if (auth()->user()->isArtist() || auth()->user()->isArtLover())
             <section class="container" style="padding-top: 28px; padding-bottom: 0;">
-                <div style="
-                    background: #eeeee4;
-                    border: 1px solid rgba(85, 97, 58, 0.12);
-                    border-radius: 14px;
-                    padding: 20px 26px;
-                ">
-                    <span style="
-                        display: block;
-                        margin-bottom: 6px;
-                        color: #72795f;
-                        font-size: 11px;
-                        font-weight: 700;
-                        letter-spacing: 2px;
-                        text-transform: uppercase;
-                    ">
-                        YOUR ARTfy SPACE
+                <div style="background: #eeeee4; border: 1px solid rgba(85, 97, 58, 0.12); border-radius: 14px; padding: 20px 26px;">
+                    <span style="display: block; margin-bottom: 6px; color: #72795f; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;">
+                        Your Artfy space
                     </span>
 
-                    <h2 style="
-                        margin: 0 0 6px;
-                        color: #414c2c;
-                        font-family: 'Playfair Display', serif;
-                        font-size: clamp(23px, 3vw, 30px);
-                        font-weight: 600;
-                    ">
+                    <h2 style="margin: 0 0 6px; color: #414c2c; font-family: 'Playfair Display', serif; font-size: clamp(23px, 3vw, 30px); font-weight: 600;">
                         Welcome back, {{ auth()->user()->name }}!
                     </h2>
 
-                    <p style="
-                        margin: 0;
-                        color: #72795f;
-                        font-size: 14px;
-                        line-height: 1.7;
-                    ">
+                    <p style="margin: 0; color: #72795f; font-size: 14px; line-height: 1.7;">
                         @if (auth()->user()->isArtist())
                             Your creative journey continues here. Discover inspiration and share your art with the world.
                         @else
@@ -53,11 +29,9 @@
         @endif
     @endauth
 
-    {{-- ================= HERO ================= --}}
+    {{-- HERO: INDEPENDENT CURATED IMAGE --}}
     <section class="home-hero">
-
         <div class="home-hero-copy">
-
             <span class="eyebrow">
                 <span class="eyebrow-dot"></span>
                 A gallery without walls
@@ -73,10 +47,7 @@
                 a little more meaning into your everyday.
             </p>
 
-            <form class="home-search"
-                  action="{{ route('artworks.index') }}"
-                  method="GET">
-
+            <form class="home-search" action="{{ route('artworks.index') }}" method="GET">
                 <span aria-hidden="true">⌕</span>
 
                 <label class="visually-hidden" for="gallery-search">
@@ -87,6 +58,7 @@
                     id="gallery-search"
                     type="search"
                     name="q"
+                    value="{{ request('q') }}"
                     placeholder="Search art, artists, and more"
                 >
 
@@ -94,68 +66,49 @@
             </form>
 
             <div class="hero-actions">
-
-                <a href="{{ route('artworks.index') }}"
-                   class="button button-dark">
+                <a href="{{ route('artworks.index') }}" class="button button-dark">
                     Explore artworks <span>↗</span>
                 </a>
 
-                <a href="{{ route('artists.index') }}"
-                   class="hero-text-link">
+                <a href="{{ route('artists.index') }}" class="hero-text-link">
                     Meet the artists <span>→</span>
                 </a>
-
             </div>
 
             <div class="hero-social-proof">
-                <span class="mini-avatars">
-                    <i>M</i><i>L</i><i>A</i>
-                </span>
-                <span>A community made for art lovers</span>
+                <span class="small-title">Created for curious minds</span>
             </div>
-
         </div>
 
-        <a class="hero-feature"
-           href="{{ route('artworks.show', 'quiet-morning') }}"
-           aria-label="Discover Quiet Morning by Maya Chen">
-
-            <div class="hero-feature-art artwork-art peach">
-
-                <span class="hero-art-overline">
-                    Editor's pick <span>01 / 04</span>
-                </span>
-
-                <span class="feature-orbit"></span>
-                <span class="feature-sun"></span>
-                <span class="feature-hill"></span>
-                <span class="feature-leaf"></span>
-
+        <div class="hero-feature hero-feature-curated">
+            <div class="hero-feature-art hero-curated-art">
+                <img
+                    class="hero-curated-image"
+                    src="{{ asset('images/artfy-hero.jpg') }}"
+                    alt="A curated artwork selected for the Artfy gallery"
+                    loading="eager"
+                    fetchpriority="high"
+                >
             </div>
 
             <div class="hero-feature-caption">
-
                 <div>
-                    <span class="small-title">Featured artwork</span>
-                    <h2>Quiet Morning</h2>
-                    <p>Original painting · Maya Chen</p>
+                    <span class="small-title">A little inspiration</span>
+                    <h2>Almond Blossom (1890)</h2>
+                    <p>Vincent van Gogh</p>
                 </div>
 
-                <span class="feature-open">↗</span>
-
+                <span class="feature-open" aria-hidden="true">✳</span>
             </div>
-        </a>
+        </div>
 
         <span class="hero-decoration hero-decoration-one">✳</span>
         <span class="hero-decoration hero-decoration-two">✳</span>
-
     </section>
 
-    {{-- ================= EXPLORE BY MEDIUM ================= --}}
+    {{-- EXPLORE BY MEDIUM --}}
     <section class="home-categories">
-
         <div class="home-section-heading">
-
             <div>
                 <span class="small-title">Follow your curiosity</span>
                 <h2>Explore by medium</h2>
@@ -164,186 +117,206 @@
             <a class="subtle-link" href="{{ route('artworks.index') }}">
                 View all artworks <span>→</span>
             </a>
-
         </div>
 
         <div class="medium-list">
-
             @foreach ([
                 ['name' => 'Painting', 'icon' => '◒', 'tone' => 'medium-peach'],
                 ['name' => 'Photography', 'icon' => '▧', 'tone' => 'medium-blue'],
                 ['name' => 'Illustration', 'icon' => '✳', 'tone' => 'medium-green'],
-                ['name' => 'Digital', 'icon' => '⌘', 'tone' => 'medium-lilac'],
+                ['name' => 'Digital', 'icon' => '⌘', 'tone' => 'medium-green'],
             ] as $medium)
-
-                <a class="medium-item"
-                   href="{{ route('artworks.index', ['category' => $medium['name']]) }}">
-
+                <a
+                    class="medium-item"
+                    href="{{ route('artworks.index', ['art_type' => $medium['name']]) }}"
+                >
                     <span class="medium-icon {{ $medium['tone'] }}">
                         {{ $medium['icon'] }}
                     </span>
 
                     <span>{{ $medium['name'] }}</span>
-
                     <span class="medium-arrow">↗</span>
-
                 </a>
-
             @endforeach
-
         </div>
-
     </section>
 
-    {{-- ================= FEATURED ARTWORKS ================= --}}
+    {{-- FEATURED ARTWORKS --}}
     <section class="home-artworks">
-
         <div class="home-section-heading">
-
             <div>
                 <span class="small-title">Thoughtfully selected</span>
                 <h2>Artworks to fall for</h2>
             </div>
 
-            <a class="subtle-link"
-               href="{{ route('artworks.index', ['sort' => 'popular']) }}">
+            <a
+                class="subtle-link"
+                href="{{ route('artworks.index', ['sort' => 'popular']) }}"
+            >
                 Discover the collection <span>→</span>
             </a>
-
         </div>
 
         <div class="home-artwork-grid">
-
-            @foreach ($artworks as $index => $artwork)
-
-                <a class="home-artwork-card"
-                   href="{{ route('artworks.show', $artwork['slug']) }}">
-
-                    <div class="home-artwork-image artwork-art {{ $artwork['color'] }} artwork-composition-{{ $index + 1 }}">
+            @forelse ($artworks as $index => $artwork)
+                <a
+                    class="home-artwork-card"
+                    href="{{ route('artworks.show', $artwork['slug']) }}"
+                >
+                    <div class="home-artwork-image artwork-art {{ $artwork['color'] ?? 'green' }} artwork-composition-{{ ($index % 3) + 1 }}">
+                        @if (!empty($artwork['image']))
+                            <img
+                                class="home-artwork-photo"
+                                src="{{ asset('storage/' . ltrim($artwork['image'], '/')) }}"
+                                alt="{{ $artwork['title'] }}"
+                                loading="lazy"
+                            >
+                        @else
+                            <span class="composition-shape"></span>
+                            <span class="composition-shape-two"></span>
+                        @endif
 
                         <span class="artwork-type">
-                            {{ $artwork['category'] }}
+                            {{ $artwork['category'] ?? 'Artwork' }}
                         </span>
 
-                        <span class="artwork-favorite"
-                              aria-label="{{ $artwork['likes'] }} likes">
-                            ♡ <span>{{ $artwork['likes'] }}</span>
+                        <span
+                            class="artwork-favorite"
+                            aria-label="{{ $artwork['likes'] ?? 0 }} likes"
+                        >
+                            ♡ <span>{{ $artwork['likes'] ?? 0 }}</span>
                         </span>
-
-                        <span class="composition-shape"></span>
-                        <span class="composition-shape-two"></span>
 
                         <span class="artwork-quick-view">
                             Discover artwork <span>↗</span>
                         </span>
-
                     </div>
 
                     <div class="home-artwork-meta">
-
                         <div>
                             <h3>{{ $artwork['title'] }}</h3>
                             <p>
-                                by <span>{{ $artwork['artist'] }}</span>
+                                by <span>{{ $artwork['artist'] ?? 'Artfy artist' }}</span>
                             </p>
                         </div>
 
-                        <strong>${{ $artwork['price'] }}</strong>
-
+                        <strong>
+                            ৳{{ number_format((float) ($artwork['price'] ?? 0), 2) }}
+                        </strong>
                     </div>
+                </a>
+            @empty
+                <div
+                    class="gallery-empty-state"
+                    style="grid-column: 1 / -1; padding: 35px 24px; text-align: center; border: 1px solid rgba(85, 97, 58, 0.15); border-radius: 14px; background: #f5f3e8;"
+                >
+                    <h3 style="color: #414c2c; margin-bottom: 8px;">
+                        Your next favourite artwork is yet to arrive.
+                    </h3>
 
+                    <p style="color: #72795f; margin-bottom: 18px;">
+                        Approved artworks uploaded by artists will appear here.
+                    </p>
+
+                    <a href="{{ route('artworks.index') }}" class="button button-dark">
+                        Explore artworks <span>↗</span>
+                    </a>
+                </div>
+            @endforelse
+        </div>
+    </section>
+
+    {{-- FEATURED ARTIST --}}
+    @if (!empty($artists) && isset($artists[0]))
+        @php
+            $featuredArtist = $artists[0];
+        @endphp
+
+        <section class="artist-feature">
+            <div class="artist-feature-visual artwork-art green">
+                @if (!empty($featuredArtist['image']))
+                    <img
+                        class="artist-feature-photo"
+                        src="{{ asset('storage/' . ltrim($featuredArtist['image'], '/')) }}"
+                        alt="{{ $featuredArtist['name'] }}"
+                        loading="lazy"
+                    >
+                @else
+                    <span class="artist-art-initial">
+                        {{ mb_strtoupper(mb_substr($featuredArtist['name'], 0, 1)) }}
+                    </span>
+
+                    <span class="artist-visual-note">
+                        Making the everyday<br>
+                        feel extraordinary.
+                    </span>
+                @endif
+            </div>
+
+            <div class="artist-feature-copy">
+                <span class="small-title">Get to know the maker</span>
+
+                <h2>
+                    Meet {{ $featuredArtist['name'] }}<span>.</span>
+                </h2>
+
+                <p>
+                    {{ $featuredArtist['bio'] ?? 'Discover the story and creative work of this artist.' }}
+                </p>
+
+                <a
+                    class="button button-dark"
+                    href="{{ route('artists.show', $featuredArtist['slug']) }}"
+                >
+                    Explore artist profile <span>→</span>
                 </a>
 
-            @endforeach
+                <a class="artist-feature-all" href="{{ route('artists.index') }}">
+                    Discover all artists <span>↗</span>
+                </a>
+            </div>
+        </section>
+    @endif
 
-        </div>
-
-    </section>
-
-    {{-- ================= FEATURED ARTIST ================= --}}
-    <section class="artist-feature">
-
-        <div class="artist-feature-visual artwork-art peach">
-            <span class="artist-art-initial">M</span>
-
-            <span class="artist-visual-note">
-                Making the everyday<br>
-                feel extraordinary.
-            </span>
-        </div>
-
-        <div class="artist-feature-copy">
-
-            <span class="small-title">Get to know the maker</span>
-
-            <h2>Meet Maya Chen<span>.</span></h2>
-
-            <p>
-                Painter, observer, and collector of small moments.
-                Maya’s warm, color-rich work finds beauty in the everyday.
-            </p>
-
-            <a class="button button-dark"
-               href="{{ route('artists.show', 'maya-chen') }}">
-                Explore Maya’s profile <span>→</span>
-            </a>
-
-            <a class="artist-feature-all"
-               href="{{ route('artists.index') }}">
-                Discover all artists <span>↗</span>
-            </a>
-
-        </div>
-
-    </section>
-
-    {{-- ================= EXHIBITIONS ================= --}}
+    {{-- EXHIBITIONS --}}
     <section class="home-exhibition">
-
         <div class="home-section-heading">
-
             <div>
                 <span class="small-title">Curated perspectives</span>
                 <h2>Come see it differently</h2>
             </div>
 
-            <a class="subtle-link"
-               href="{{ route('exhibitions.index') }}">
+            <a class="subtle-link" href="{{ route('exhibitions.index') }}">
                 All exhibitions <span>→</span>
             </a>
-
         </div>
 
-        @if (isset($exhibitions[0]))
-
-            <a class="exhibition-feature artwork-art green"
-               href="{{ route('exhibitions.show', $exhibitions[0]['slug']) }}">
-
+        @if (!empty($exhibitions) && isset($exhibitions[0]))
+            <a
+                class="exhibition-feature artwork-art green"
+                href="{{ route('exhibitions.show', $exhibitions[0]['slug']) }}"
+            >
                 <span class="exhibition-feature-art"></span>
 
                 <span class="exhibition-feature-info">
-
-                    <span class="exhibition-label">
-                        Now showing · Online exhibition
-                    </span>
-
+                    <span class="exhibition-label">Online exhibition</span>
                     <strong>{{ $exhibitions[0]['title'] }}</strong>
-
-                    <span>{{ $exhibitions[0]['subtitle'] }}</span>
-
+                    <span>{{ $exhibitions[0]['subtitle'] ?? '' }}</span>
                 </span>
 
                 <span class="exhibition-feature-arrow">↗</span>
-
             </a>
-
+        @else
+            <div
+                style="padding: 24px; border: 1px solid rgba(85, 97, 58, 0.15); border-radius: 14px; color: #72795f; background: #f5f3e8;"
+            >
+                New exhibitions will appear here when they become available.
+            </div>
         @endif
-
     </section>
 
-    {{-- ================= JOIN ARTfy ================= --}}
+    {{-- JOIN ARTFY --}}
     <section class="home-join">
-
         <span class="small-title">A little more art in your life</span>
 
         <h2>
@@ -355,11 +328,9 @@
             Explore a growing collection of original work from independent artists.
         </p>
 
-        <a class="button button-dark"
-           href="{{ route('artworks.index') }}">
-            Find your next favorite <span>→</span>
+        <a class="button button-dark" href="{{ route('artworks.index') }}">
+            Find your next favourite <span>→</span>
         </a>
-
     </section>
 
 @endsection

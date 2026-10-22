@@ -3156,3 +3156,178 @@ body.auth-modal-open {
     box-shadow: none;
     background: #f8f6f2;
 }
+
+/* Curated hero image */
+.hero-feature-curated {
+    cursor: default;
+}
+
+.hero-feature-curated .hero-feature-art {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+}
+
+.hero-feature-curated .hero-curated-image {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    border-radius: inherit;
+    transition: transform 500ms ease;
+}
+
+.hero-feature-curated:hover .hero-curated-image {
+    transform: scale(1.035);
+}
+
+/* Real artwork photos should cover their cards cleanly */
+.home-artwork-image {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+}
+
+.home-artwork-image .home-artwork-photo {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: center;
+    transition: transform 400ms ease;
+}
+
+.home-artwork-card:hover .home-artwork-photo {
+    transform: scale(1.045);
+}
+
+/* Keep artwork labels and controls above the photograph */
+.home-artwork-image .artwork-type,
+.home-artwork-image .artwork-favorite,
+.home-artwork-image .artwork-quick-view {
+    position: relative;
+    z-index: 2;
+}
+
+/* Artist photograph */
+.artist-feature-visual {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+}
+
+.artist-feature-visual .artist-feature-photo {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: center;
+}
+
+.artist-feature-visual .artist-visual-note {
+    position: relative;
+    z-index: 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hero-feature-curated .hero-curated-image,
+    .home-artwork-card .home-artwork-photo {
+        transition: none;
+    }
+
+    .hero-feature-curated:hover .hero-curated-image,
+    .home-artwork-card:hover .home-artwork-photo {
+        transform: none;
+    }
+}
+
+/* ==========================================
+   ARTFY IMAGE VISIBILITY FIX
+   Keeps the existing theme and layout
+   ========================================== */
+
+/* Artwork cards: remove decorative backgrounds
+   only when an uploaded photo exists */
+.home-artwork-image:has(.home-artwork-photo) {
+    background: #f5f3e8;
+    overflow: hidden;
+    isolation: isolate;
+}
+
+.home-artwork-image:has(.home-artwork-photo)::before,
+.home-artwork-image:has(.home-artwork-photo)::after {
+    display: none !important;
+    content: none !important;
+}
+
+/* Display the complete uploaded artwork.
+   Neutral space may remain around portrait images. */
+.home-artwork-image .home-artwork-photo {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: center;
+    z-index: 1;
+    transition: transform 400ms ease;
+}
+
+/* Keep card labels above the image */
+.home-artwork-image .artwork-type,
+.home-artwork-image .artwork-favorite,
+.home-artwork-image .artwork-quick-view {
+    position: absolute;
+    z-index: 3;
+}
+
+/* Artist photo: remove the decorative circle and shapes
+   when an actual artist photo is available */
+.artist-feature-visual:has(.artist-feature-photo) {
+    background: #f5f3e8;
+    overflow: hidden;
+    isolation: isolate;
+}
+
+.artist-feature-visual:has(.artist-feature-photo)::before,
+.artist-feature-visual:has(.artist-feature-photo)::after {
+    display: none !important;
+    content: none !important;
+}
+
+/* Fill the artist image area */
+.artist-feature-visual .artist-feature-photo {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    z-index: 1;
+}
+
+/* Don't place decorative text over an uploaded portrait */
+.artist-feature-visual:has(.artist-feature-photo) .artist-visual-note {
+    display: none;
+}
+
+/* Preserve hover animation unless reduced motion is preferred */
+@media (prefers-reduced-motion: reduce) {
+    .home-artwork-card .home-artwork-photo {
+        transition: none;
+    }
+
+    .home-artwork-card:hover .home-artwork-photo {
+        transform: none;
+    }
+}
+

@@ -27,12 +27,27 @@ class GalleryController extends Controller
     }
 
     /**
-     * Explore artworks with search, art type, price and sorting.
+     * Explore artworks with search, format, medium, price and sorting.
      */
     public function artworks(Request $request): View
     {
         $query = trim((string) $request->query('q', ''));
-        $artType = trim((string) $request->query('art_type', ''));
+
+        // Physical or digital artwork format.
+        $artworkFormat = strtolower(trim(
+            (string) $request->query('artwork_type', '')
+        ));
+
+        if (!in_array($artworkFormat, ['', 'physical', 'digital'], true)) {
+            $artworkFormat = '';
+        }
+
+        // Support older links that use ?art_type=...
+        $mediumFilter = trim((string) $request->query(
+            'medium',
+            $request->query('art_type', '')
+        ));
+
         $maxPriceInput = $request->query('max_price', '');
         $sort = (string) $request->query('sort', 'latest');
 
@@ -59,7 +74,8 @@ class GalleryController extends Controller
             $artworks,
             function (array $artwork) use (
                 $query,
-                $artType,
+                $artworkFormat,
+                $mediumFilter,
                 $maxPrice
             ): bool {
                 $searchText = implode(' ', [
@@ -76,8 +92,15 @@ class GalleryController extends Controller
                         mb_strtolower($query)
                     );
 
-                $matchesArtType = $artType === ''
-                    || $this->matchesArtType($artwork, $artType);
+                $format = strtolower(trim(
+                    (string) ($artwork['artwork_type'] ?? 'physical')
+                ));
+
+                $matchesFormat = $artworkFormat === ''
+                    || $format === $artworkFormat;
+
+                $matchesMedium = $mediumFilter === ''
+                    || $this->matchesArtType($artwork, $mediumFilter);
 
                 $price = $artwork['price'] ?? null;
 
@@ -88,11 +111,13 @@ class GalleryController extends Controller
                     );
 
                 return $matchesQuery
-                    && $matchesArtType
+                    && $matchesFormat
+                    && $matchesMedium
                     && $matchesPrice;
             }
         ));
 
+        // Keep the existing sorting options.
         switch ($sort) {
             case 'oldest':
                 usort(
@@ -154,88 +179,162 @@ class GalleryController extends Controller
             'pageType' => 'artworks',
             'items' => $artworks,
             'query' => $query,
-            'artType' => $artType,
+            'artworkFormat' => $artworkFormat,
+            'mediumFilter' => $mediumFilter,
+
+            // Retain this for any older code that still reads artType.
+            'artType' => $mediumFilter,
+
             'maxPrice' => $maxPriceInput,
             'sort' => $sort,
         ]);
     }
 
     /**
-     * Match the art-type dropdown against category and medium.
+     * Match the selected artistic medium against the saved category
+     * and medium. Format filtering is handled separately.
      */
     private function matchesArtType(
         array $artwork,
         string $selectedType
     ): bool {
-        $category = mb_strtolower(trim(
-            (string) ($artwork['category'] ?? '')
-        ));
-
-        $medium = mb_strtolower(trim(
-            (string) ($artwork['type'] ?? '')
-        ));
-
-        $selected = mb_strtolower(trim($selectedType));
-
         $normalize = static function (string $value): string {
+            $value = mb_strtolower(trim($value));
+
             return trim(
                 preg_replace('/[^a-z0-9]+/i', ' ', $value) ?? ''
             );
         };
 
-        $category = $normalize($category);
-        $medium = $normalize($medium);
-        $selected = $normalize($selected);
+        $category = $normalize(
+            (string) ($artwork['category'] ?? '')
+        );
 
-        if ($selected === 'oil painting') {
-            return $medium === 'oil'
-                || $medium === 'oil painting'
-                || $category === 'oil painting';
-        }
+        $medium = $normalize(
+            (string) ($artwork['type'] ?? '')
+        );
 
-        if ($selected === 'digital painting') {
-            return $medium === 'digital painting'
-                || (
-                    $medium === 'digital'
-                    && $category === 'painting'
-                );
-        }
+        $selected = $normalize($selectedType);
 
-        if ($selected === 'watercolor painting') {
-            return in_array($medium, [
-                'watercolor',
-                'watercolour',
+        // Check both category and medium.
+        $values = array_unique(array_filter([
+            $category,
+            $medium,
+        ]));
+
+        // Match medium names and common variations.
+        $aliases = [
+            'oil painting' => [
+                'oil painting',
+                'oil',
+                'oil on canvas',
+                'oil on linen',
+                'oil on wood',
+                'oil paint',
+                'oil paints',
+            ],
+
+            'watercolor painting' => [
                 'watercolor painting',
                 'watercolour painting',
-            ], true);
+                'watercolor',
+                'watercolour',
+                'watercolor on paper',
+                'watercolour on paper',
+                'watercolor paint',
+                'watercolour paint',
+            ],
+
+            'pastel painting' => [
+                'pastel painting',
+                'pastel',
+                'soft pastel',
+                'oil pastel',
+                'pastels',
+                'pastel on paper',
+            ],
+
+            'acrylic painting' => [
+                'acrylic painting',
+                'acrylic',
+                'acrylic paint',
+                'acrylic on canvas',
+                'acrylic on paper',
+            ],
+
+            'ink wash painting' => [
+                'ink wash painting',
+                'ink wash',
+                'ink wash art',
+                'literati painting',
+                'chinese ink painting',
+                'sumi e',
+                'sumi e painting',
+            ],
+
+            'encaustic painting' => [
+                'encaustic painting',
+                'encaustic',
+                'hot wax painting',
+                'hot wax',
+                'wax painting',
+            ],
+
+            'spray painting' => [
+                'spray painting',
+                'spray paint',
+                'spray art',
+                'aerosol art',
+            ],
+
+            'sketching' => [
+                'sketching',
+                'sketch',
+                'pencil sketch',
+                'pen sketch',
+                'charcoal sketch',
+                'sketch drawing',
+                'drawing',
+            ],
+
+            'photography' => [
+                'photography',
+                'photograph',
+                'photo',
+                'digital photography',
+                'film photography',
+                'photographic print',
+            ],
+
+            'digital painting' => [
+                'digital painting',
+                'digital art',
+                'digital illustration',
+                'digital drawing',
+                'digital',
+            ],
+        ];
+
+        $selectedAliases = $aliases[$selected] ?? [$selected];
+
+        foreach ($values as $value) {
+            // Exact match.
+            if (in_array($value, $selectedAliases, true)) {
+                return true;
+            }
+
+            // Match saved details such as "Original oil painting".
+            foreach ($selectedAliases as $alias) {
+                if (
+                    $alias !== ''
+                    && str_contains($value, $alias)
+                ) {
+                    return true;
+                }
+            }
         }
 
-        if ($selected === 'sketching') {
-            return in_array(
-                $category,
-                ['sketching', 'sketch', 'drawing'],
-                true
-            ) || in_array(
-                $medium,
-                ['sketching', 'sketch', 'drawing'],
-                true
-            );
-        }
-
-        if ($selected === 'drawing') {
-            return in_array(
-                $category,
-                ['drawing', 'sketching', 'sketch'],
-                true
-            ) || in_array(
-                $medium,
-                ['drawing', 'sketching', 'sketch'],
-                true
-            );
-        }
-
-        return $category === $selected
-            || $medium === $selected;
+        return false;
     }
 
     /**
@@ -411,6 +510,10 @@ class GalleryController extends Controller
                         : null,
                     'category' => $artwork->category ?: 'Other',
                     'type' => $artwork->medium ?: 'Not specified',
+
+                    // Artwork format is separate from the artistic medium.
+                    'artwork_type' => $artwork->artwork_type ?: 'physical',
+
                     'price' => $artwork->price,
                     'likes' => 0,
                     'color' => 'green',

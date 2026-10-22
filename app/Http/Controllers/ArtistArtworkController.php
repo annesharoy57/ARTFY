@@ -4,7 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Artwork;
 use App\Models\Order;
+use App\Models\User;
+use App\Notifications\ArtfyDatabaseNotification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Throwable;
@@ -12,8 +15,7 @@ use Throwable;
 class ArtistArtworkController extends Controller
 {
     /**
-     * Verify that the current user is an approved artist
-     * with verified membership payment.
+     * Check whether the current user has an active artist membership.
      */
     private function checkArtistAccess()
     {
@@ -30,7 +32,8 @@ class ArtistArtworkController extends Controller
         if (
             !$application ||
             $application->status !== 'approved' ||
-            $application->payment_status !== 'verified'
+            $application->payment_status !== 'verified' ||
+            $user->membership_status !== 'active'
         ) {
             return redirect()
                 ->route('artist.application')
@@ -41,6 +44,61 @@ class ArtistArtworkController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * Notify every administrator about an artwork awaiting moderation.
+     */
+    private function notifyAdminsAboutArtwork(Artwork $artwork, string $event): void
+    {
+        $artist = User::find($artwork->user_id);
+
+        if (!$artist) {
+            return;
+        }
+
+        $isUpdate = $event === 'updated';
+
+        $title = $isUpdate
+            ? 'Artwork resubmitted for approval'
+            : 'New artwork awaiting approval';
+
+        $message = $isUpdate
+            ? $artist->name . ' updated "' . $artwork->title
+                . '". Please review it.'
+            : $artist->name . ' uploaded "' . $artwork->title
+                . '". Please review it.';
+
+        $url = route('admin.artworks.index', [], false);
+
+        User::where('role', 'admin')->get()->each(
+            function (User $admin) use (
+                $artwork,
+                $artist,
+                $title,
+                $message,
+                $url,
+                $event
+            ): void {
+                $admin->notify(
+                    new ArtfyDatabaseNotification(
+                        $event === 'updated'
+                            ? 'artfy.artwork_resubmitted'
+                            : 'artfy.artwork_submitted',
+                        [
+                            'title' => $title,
+                            'message' => $message,
+                            'url' => $url,
+                            'artwork_id' => $artwork->id,
+                            'artwork_title' => $artwork->title,
+                            'artist_id' => $artist->id,
+                            'artist_name' => $artist->name,
+                            'moderation_status' => $artwork->moderation_status,
+                        ]
+                    )
+                );
+            }
+        );
     }
 
     /**
@@ -72,7 +130,7 @@ class ArtistArtworkController extends Controller
     }
 
     /**
-     * Save a newly uploaded artwork.
+     * Upload a new artwork and notify administrators.
      */
     public function store(Request $request)
     {
@@ -142,20 +200,30 @@ class ArtistArtworkController extends Controller
                 }
             }
 
-            Artwork::create([
-                'user_id' => auth()->id(),
-                'title' => $validated['title'],
-                'description' => $validated['description'] ?? null,
-                'image' => $imagePath,
-                'category' => $validated['category'] ?? null,
-                'medium' => $validated['medium'] ?? null,
-                'price' => $validated['price'] ?? null,
-                'artwork_type' => $validated['artwork_type'],
-                'digital_file_path' => $digitalFilePath,
-                'status' => 'available',
-                'moderation_status' => 'pending',
-                'is_sold' => false,
-            ]);
+            DB::transaction(function () use (
+                &$artwork,
+                $validated,
+                $imagePath,
+                $digitalFilePath
+            ): void {
+                $artwork = Artwork::create([
+                    'user_id' => auth()->id(),
+                    'title' => $validated['title'],
+                    'description' => $validated['description'] ?? null,
+                    'image' => $imagePath,
+                    'category' => $validated['category'] ?? null,
+                    'medium' => $validated['medium'] ?? null,
+                    'price' => $validated['price'] ?? null,
+                    'artwork_type' => $validated['artwork_type'],
+                    'digital_file_path' => $digitalFilePath,
+                    'status' => 'available',
+                    'moderation_status' => 'pending',
+                    'is_sold' => false,
+                ]);
+            });
+
+            // Notify administrators only after the artwork is saved.
+            $this->notifyAdminsAboutArtwork($artwork, 'submitted');
         } catch (Throwable $exception) {
             Storage::disk('public')->delete($imagePath);
 
@@ -205,7 +273,7 @@ class ArtistArtworkController extends Controller
     }
 
     /**
-     * Update an artwork and submit it for moderation again.
+     * Update an artwork and require admin review again.
      */
     public function update(Request $request, Artwork $artwork)
     {
@@ -272,8 +340,7 @@ class ArtistArtworkController extends Controller
         ) {
             return back()
                 ->withErrors([
-                    'digital_file' =>
-                        'Upload a digital file for this artwork.',
+                    'digital_file' => 'Upload a digital file for this artwork.',
                 ])
                 ->withInput();
         }
@@ -314,23 +381,34 @@ class ArtistArtworkController extends Controller
                 }
             }
 
-            $artwork->update([
-                'title' => $validated['title'],
-                'description' => $validated['description'] ?? null,
-                'image' => $newImagePath ?? $oldImagePath,
-                'category' => $validated['category'] ?? null,
-                'medium' => $validated['medium'] ?? null,
-                'price' => $validated['price'] ?? null,
-                'artwork_type' => $validated['artwork_type'],
+            DB::transaction(function () use (
+                $artwork,
+                $validated,
+                $newImagePath,
+                $newDigitalFilePath,
+                $oldImagePath,
+                $oldDigitalFilePath
+            ): void {
+                $artwork->update([
+                    'title' => $validated['title'],
+                    'description' => $validated['description'] ?? null,
+                    'image' => $newImagePath ?? $oldImagePath,
+                    'category' => $validated['category'] ?? null,
+                    'medium' => $validated['medium'] ?? null,
+                    'price' => $validated['price'] ?? null,
+                    'artwork_type' => $validated['artwork_type'],
+                    'digital_file_path' =>
+                        $validated['artwork_type'] === 'digital'
+                            ? ($newDigitalFilePath ?? $oldDigitalFilePath)
+                            : null,
+                    'moderation_status' => 'pending',
+                ]);
+            });
 
-                'digital_file_path' =>
-                    $validated['artwork_type'] === 'digital'
-                        ? ($newDigitalFilePath ?? $oldDigitalFilePath)
-                        : null,
+            $artwork->refresh();
 
-                // Require admin review after an edit.
-                'moderation_status' => 'pending',
-            ]);
+            // Notify admins that the artwork needs another review.
+            $this->notifyAdminsAboutArtwork($artwork, 'updated');
         } catch (Throwable $exception) {
             if ($newImagePath) {
                 Storage::disk('public')->delete($newImagePath);
@@ -343,7 +421,7 @@ class ArtistArtworkController extends Controller
             throw $exception;
         }
 
-        // Delete replaced files only after the database update succeeds.
+        // Remove replaced files only after the database update succeeds.
         if ($newImagePath && $oldImagePath) {
             Storage::disk('public')->delete($oldImagePath);
         }
@@ -395,7 +473,6 @@ class ArtistArtworkController extends Controller
         $imagePath = $artwork->image;
         $digitalFilePath = $artwork->digital_file_path;
 
-        // Delete the database record before removing stored files.
         $artwork->delete();
 
         if ($imagePath) {

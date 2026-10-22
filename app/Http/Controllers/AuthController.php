@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Notifications\ArtfyDatabaseNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -17,7 +18,7 @@ class AuthController extends Controller
     {
         $role = $request->query('role', 'art_lover');
 
-        if (!in_array($role, ['artist', 'art_lover'], true)) {
+        if (! in_array($role, ['artist', 'art_lover'], true)) {
             return redirect()->route('auth.choose-role');
         }
 
@@ -88,7 +89,7 @@ class AuthController extends Controller
     {
         $role = $request->query('role', 'art_lover');
 
-        if (!in_array($role, ['admin', 'artist', 'art_lover'], true)) {
+        if (! in_array($role, ['admin', 'artist', 'art_lover'], true)) {
             return redirect()->route('auth.choose-role');
         }
 
@@ -112,7 +113,7 @@ class AuthController extends Controller
         $user = User::where('email', $validated['email'])->first();
 
         // Ensure the selected account type matches the user's account.
-        if (!$user || $user->role !== $validated['role']) {
+        if (! $user || $user->role !== $validated['role']) {
             return back()
                 ->withErrors([
                     'email' => 'The email, password, or selected account type is incorrect.',
@@ -123,7 +124,7 @@ class AuthController extends Controller
         }
 
         // Verify the password.
-        if (!Auth::attempt([
+        if (! Auth::attempt([
             'email' => $validated['email'],
             'password' => $validated['password'],
         ], $request->boolean('remember'))) {
@@ -151,7 +152,7 @@ class AuthController extends Controller
             $application = $user->artistApplication;
 
             if (
-                !$application ||
+                ! $application ||
                 $application->status !== 'approved' ||
                 $application->payment_status !== 'verified'
             ) {
@@ -163,11 +164,7 @@ class AuthController extends Controller
                     );
             }
 
-            /*
-             * IMPORTANT:
-             * Approved artists now land on Discover after login,
-             * instead of being redirected to Artist Studio.
-             */
+            // Approved artists land on Discover after login.
             return redirect()->route('home');
         }
 
@@ -182,7 +179,7 @@ class AuthController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user || $user->role !== 'artist') {
+        if (! $user || $user->role !== 'artist') {
             return redirect()
                 ->route('home')
                 ->with(
@@ -198,12 +195,13 @@ class AuthController extends Controller
 
     /**
      * Save an Artist Membership Application.
+     * Notify every admin after the application is saved successfully.
      */
     public function submitArtistApplication(Request $request)
     {
         $user = Auth::user();
 
-        if (!$user || $user->role !== 'artist') {
+        if (! $user || $user->role !== 'artist') {
             return redirect()
                 ->route('home')
                 ->with(
@@ -222,7 +220,6 @@ class AuthController extends Controller
                 );
         }
 
-        // Categories an artist can select.
         $allowedCategories = [
             'Painting',
             'Photography',
@@ -273,7 +270,7 @@ class AuthController extends Controller
         );
 
         // Save the application.
-        $user->artistApplication()->create([
+        $application = $user->artistApplication()->create([
             'artist_name' => $validated['artist_name'],
             'biography' => $validated['biography'],
 
@@ -297,6 +294,28 @@ class AuthController extends Controller
         $user->membership_status = 'pending';
         $user->save();
 
+        // Notify all admins about the new artist application.
+        User::where('role', 'admin')->get()->each(
+            function (User $admin) use ($user, $application) {
+                $admin->notify(new ArtfyDatabaseNotification(
+                    'artfy.artist_application_submitted',
+                    [
+                        'title' => 'New artist membership application',
+                        'message' => $user->name
+                            . ' has submitted an artist membership application.',
+                        'url' => route(
+                            'admin.memberships.index',
+                            [],
+                            false
+                        ),
+                        'artist_id' => $user->id,
+                        'artist_name' => $application->artist_name,
+                        'application_id' => $application->id,
+                    ]
+                ));
+            }
+        );
+
         return redirect()
             ->route('artist.application')
             ->with(
@@ -307,18 +326,19 @@ class AuthController extends Controller
 
     /**
      * Submit manual membership payment details.
+     * Notify every admin after the payment reference is saved.
      */
     public function submitMembershipPayment(Request $request)
     {
         $user = Auth::user();
 
-        if (!$user || $user->role !== 'artist') {
+        if (! $user || $user->role !== 'artist') {
             abort(403, 'Only artist accounts can submit payment details.');
         }
 
         $application = $user->artistApplication;
 
-        if (!$application) {
+        if (! $application) {
             return redirect()
                 ->route('artist.application')
                 ->with(
@@ -352,6 +372,29 @@ class AuthController extends Controller
         $application->payment_submitted_at = now();
         $application->payment_verified_at = null;
         $application->save();
+
+        // Notify all admins that the artist submitted payment details.
+        User::where('role', 'admin')->get()->each(
+            function (User $admin) use ($user, $application) {
+                $admin->notify(new ArtfyDatabaseNotification(
+                    'artfy.membership_payment_submitted',
+                    [
+                        'title' => 'Membership payment needs verification',
+                        'message' => $user->name
+                            . ' has submitted a membership payment reference for verification.',
+                        'url' => route(
+                            'admin.memberships.index',
+                            [],
+                            false
+                        ),
+                        'artist_id' => $user->id,
+                        'artist_name' => $application->artist_name,
+                        'application_id' => $application->id,
+                        'payment_status' => $application->payment_status,
+                    ]
+                ));
+            }
+        );
 
         return redirect()
             ->route('artist.application')

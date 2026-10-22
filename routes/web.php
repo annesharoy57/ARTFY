@@ -1,4 +1,3 @@
-
 <?php
 
 use App\Http\Controllers\GalleryController;
@@ -10,6 +9,7 @@ use App\Http\Controllers\AdminArtworkController;
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\ArtworkPurchaseController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ArtistMembershipPaymentController;
 use Illuminate\Support\Facades\Route;
 
 // ========================================
@@ -61,7 +61,7 @@ Route::view('/favorites', 'artfy.page', [
 ])->name('favorites.index');
 
 // ========================================
-// LOGIN
+// LOGIN / REGISTRATION
 // ========================================
 
 Route::get('/login', [AuthController::class, 'showLogin'])
@@ -70,26 +70,18 @@ Route::get('/login', [AuthController::class, 'showLogin'])
 Route::post('/login', [AuthController::class, 'login'])
     ->name('login.submit');
 
-// ========================================
-// REGISTRATION
-// ========================================
-
 Route::get('/register', [AuthController::class, 'showRegister'])
     ->name('register');
 
 Route::post('/register', [AuthController::class, 'register'])
     ->name('register.submit');
 
-// ========================================
-// CHOOSE ACCOUNT TYPE
-// ========================================
-
 Route::view('/choose-role', 'auth.choose-role')
     ->name('auth.choose-role');
 
 // ========================================
-// SSLCOMMERZ PAYMENT CALLBACKS
-// Keep outside the auth group.
+// ARTWORK SSLCOMMERZ CALLBACKS
+// Keep these unchanged and outside auth.
 // ========================================
 
 Route::post('/payment/sslcommerz/success', [
@@ -113,20 +105,44 @@ Route::post('/payment/sslcommerz/ipn', [
 ])->name('payment.sslcommerz.ipn');
 
 // ========================================
-// LOGOUT
+// MEMBERSHIP SSLCOMMERZ CALLBACKS
+// Separate from artwork callbacks.
+// Keep outside auth.
 // ========================================
 
-Route::post('/logout', [AuthController::class, 'logout'])
-    ->middleware('auth')
-    ->name('logout');
+Route::post('/membership/payment/success', [
+    ArtistMembershipPaymentController::class,
+    'success',
+])->name('membership.payment.success');
+
+Route::post('/membership/payment/fail', [
+    ArtistMembershipPaymentController::class,
+    'fail',
+])->name('membership.payment.fail');
+
+Route::post('/membership/payment/cancel', [
+    ArtistMembershipPaymentController::class,
+    'cancel',
+])->name('membership.payment.cancel');
+
+Route::post('/membership/payment/ipn', [
+    ArtistMembershipPaymentController::class,
+    'ipn',
+])->name('membership.payment.ipn');
 
 // ========================================
-// PROTECTED ROUTES
+// AUTHENTICATED ROUTES
 // ========================================
 
 Route::middleware('auth')->group(function () {
 
+    Route::post('/logout', [AuthController::class, 'logout'])
+        ->name('logout');
+
+    // ------------------------------------
     // ARTWORK PURCHASE / CHECKOUT
+    // Existing artwork purchase flow retained.
+    // ------------------------------------
 
     Route::get('/artworks/{slug}/buy', [
         ArtworkPurchaseController::class,
@@ -138,14 +154,15 @@ Route::middleware('auth')->group(function () {
         'store',
     ])->name('artworks.purchase.store');
 
-    // DELIVERY ADDRESS GEOCODING
-
     Route::post('/artworks/delivery/geocode', [
         ArtworkPurchaseController::class,
         'geocodeDestination',
     ])->name('artworks.delivery.geocode');
 
-    // ARTIST MEMBERSHIP APPLICATION
+    // ------------------------------------
+    // ARTIST APPLICATION AND MEMBERSHIP
+    // Pending artists must retain access.
+    // ------------------------------------
 
     Route::get('/artist/application', [
         AuthController::class,
@@ -157,26 +174,15 @@ Route::middleware('auth')->group(function () {
         'submitArtistApplication',
     ])->name('artist.application.submit');
 
-    // ARTIST MEMBERSHIP PAYMENT
-
     Route::post('/artist/application/payment', [
-        AuthController::class,
-        'submitMembershipPayment',
-    ])->name('artist.application.payment');
+        ArtistMembershipPaymentController::class,
+        'store',
+    ])->name('artist.application.payment.store');
 
-    // ARTIST PROFILE EDITING
-
-    Route::get('/artist/my-profile', [
-        ArtistProfileController::class,
-        'edit',
-    ])->name('artist-profile.edit');
-
-    Route::put('/artist/my-profile', [
-        ArtistProfileController::class,
-        'update',
-    ])->name('artist-profile.update');
-
-    // MY PROFILE
+    // ------------------------------------
+    // GENERAL PROFILE
+    // Keep separate from artist-only profile.
+    // ------------------------------------
 
     Route::get('/my-profile', [
         ArtistProfileController::class,
@@ -193,139 +199,135 @@ Route::middleware('auth')->group(function () {
         'updateArtLover',
     ])->name('my-profile.update');
 
-    // ====================================
-    // MY ARTWORKS
-    // ====================================
+    // ------------------------------------
+    // ACTIVE ARTIST MEMBERS ONLY
+    // Requires artist.active middleware.
+    // ------------------------------------
 
-    // Keep this route name for compatibility with existing views.
-    Route::get('/artist/studio', [
-        ArtistArtworkController::class,
-        'index',
-    ])->name('artist.studio');
+    Route::middleware('artist.active')->group(function () {
 
-    // CREATE / UPLOAD
+        Route::get('/artist/my-profile', [
+            ArtistProfileController::class,
+            'edit',
+        ])->name('artist-profile.edit');
 
-    Route::get('/artist/studio/artworks/create', [
-        ArtistArtworkController::class,
-        'create',
-    ])->name('artist.artworks.create');
+        Route::put('/artist/my-profile', [
+            ArtistProfileController::class,
+            'update',
+        ])->name('artist-profile.update');
 
-    Route::post('/artist/studio/artworks', [
-        ArtistArtworkController::class,
-        'store',
-    ])->name('artist.artworks.store');
+        Route::get('/artist/studio', [
+            ArtistArtworkController::class,
+            'index',
+        ])->name('artist.studio');
 
-    // EDIT
+        Route::get('/artist/studio/artworks/create', [
+            ArtistArtworkController::class,
+            'create',
+        ])->name('artist.artworks.create');
 
-    Route::get('/artist/my-artworks/{artwork}/edit', [
-        ArtistArtworkController::class,
-        'edit',
-    ])->name('artist.artworks.edit');
+        Route::post('/artist/studio/artworks', [
+            ArtistArtworkController::class,
+            'store',
+        ])->name('artist.artworks.store');
 
-    // UPDATE
+        Route::get('/artist/my-artworks/{artwork}/edit', [
+            ArtistArtworkController::class,
+            'edit',
+        ])->name('artist.artworks.edit');
 
-    Route::put('/artist/my-artworks/{artwork}', [
-        ArtistArtworkController::class,
-        'update',
-    ])->name('artist.artworks.update');
+        Route::put('/artist/my-artworks/{artwork}', [
+            ArtistArtworkController::class,
+            'update',
+        ])->name('artist.artworks.update');
 
-    // DELETE
+        Route::delete('/artist/studio/artworks/{artwork}', [
+            ArtistArtworkController::class,
+            'destroy',
+        ])->name('artist.artworks.destroy');
+    });
 
-    Route::delete('/artist/studio/artworks/{artwork}', [
-        ArtistArtworkController::class,
-        'destroy',
-    ])->name('artist.artworks.destroy');
+    // ------------------------------------
+    // ADMIN ONLY
+    // Every admin route requires role:admin.
+    // ------------------------------------
 
-    // ====================================
-    // ADMIN DASHBOARD
-    // ====================================
+    Route::middleware('role:admin')->group(function () {
 
-    Route::get('/admin', [
-        AdminMembershipController::class,
-        'index',
-    ])->name('admin.dashboard');
+        Route::get('/admin', [
+            AdminMembershipController::class,
+            'index',
+        ])->name('admin.dashboard');
 
-    // DEDICATED ADMIN PAGES
+        Route::get('/admin/memberships', [
+            AdminMembershipController::class,
+            'memberships',
+        ])->name('admin.memberships.index');
 
-    Route::get('/admin/memberships', [
-        AdminMembershipController::class,
-        'memberships',
-    ])->name('admin.memberships.index');
+        Route::get('/admin/payments', [
+            AdminMembershipController::class,
+            'payments',
+        ])->name('admin.payments.index');
 
-    Route::get('/admin/payments', [
-        AdminMembershipController::class,
-        'payments',
-    ])->name('admin.payments.index');
+        Route::get('/admin/reports', [
+            AdminMembershipController::class,
+            'reports',
+        ])->name('admin.reports.index');
 
-    Route::get('/admin/reports', [
-        AdminMembershipController::class,
-        'reports',
-    ])->name('admin.reports.index');
+        Route::get('/admin/sales', [
+            AdminMembershipController::class,
+            'sales',
+        ])->name('admin.sales.index');
 
-    Route::get('/admin/sales', [
-        AdminMembershipController::class,
-        'sales',
-    ])->name('admin.sales.index');
+        Route::post('/admin/memberships/{application}/approve', [
+            AdminMembershipController::class,
+            'approve',
+        ])->name('admin.memberships.approve');
 
-    // ADMIN MEMBERSHIP MANAGEMENT
+        Route::post('/admin/memberships/{application}/reject', [
+            AdminMembershipController::class,
+            'reject',
+        ])->name('admin.memberships.reject');
 
-    Route::post('/admin/memberships/{application}/approve', [
-        AdminMembershipController::class,
-        'approve',
-    ])->name('admin.memberships.approve');
+        Route::get('/admin/artworks', [
+            AdminArtworkController::class,
+            'index',
+        ])->name('admin.artworks.index');
 
-    Route::post('/admin/memberships/{application}/reject', [
-        AdminMembershipController::class,
-        'reject',
-    ])->name('admin.memberships.reject');
+        Route::post('/admin/artworks/{artwork}/approve', [
+            AdminArtworkController::class,
+            'approve',
+        ])->name('admin.artworks.approve');
 
-    Route::post('/admin/memberships/{application}/verify-payment', [
-        AdminMembershipController::class,
-        'verifyPayment',
-    ])->name('admin.memberships.verify-payment');
+        Route::post('/admin/artworks/{artwork}/reject', [
+            AdminArtworkController::class,
+            'reject',
+        ])->name('admin.artworks.reject');
 
-    // ADMIN ARTWORK REVIEW
+        Route::get('/admin/artists', [
+            AdminUserController::class,
+            'artists',
+        ])->name('admin.artists.index');
 
-    Route::get('/admin/artworks', [
-        AdminArtworkController::class,
-        'index',
-    ])->name('admin.artworks.index');
+        Route::get('/admin/artists/{user}', [
+            AdminUserController::class,
+            'showArtist',
+        ])->name('admin.artists.show');
 
-    Route::post('/admin/artworks/{artwork}/approve', [
-        AdminArtworkController::class,
-        'approve',
-    ])->name('admin.artworks.approve');
+        Route::get('/admin/art-lovers', [
+            AdminUserController::class,
+            'artLovers',
+        ])->name('admin.art-lovers.index');
 
-    Route::post('/admin/artworks/{artwork}/reject', [
-        AdminArtworkController::class,
-        'reject',
-    ])->name('admin.artworks.reject');
+        Route::get('/admin/art-lovers/{user}', [
+            AdminUserController::class,
+            'showArtLover',
+        ])->name('admin.art-lovers.show');
+    });
 
-    // ADMIN ARTISTS
-
-    Route::get('/admin/artists', [
-        AdminUserController::class,
-        'artists',
-    ])->name('admin.artists.index');
-
-    Route::get('/admin/artists/{user}', [
-        AdminUserController::class,
-        'showArtist',
-    ])->name('admin.artists.show');
-
-    // ADMIN ART LOVERS
-
-    Route::get('/admin/art-lovers', [
-        AdminUserController::class,
-        'artLovers',
-    ])->name('admin.art-lovers.index');
-
-    Route::get('/admin/art-lovers/{user}', [
-        AdminUserController::class,
-        'showArtLover',
-    ])->name('admin.art-lovers.show');
-
+    // ------------------------------------
     // NOTIFICATIONS
+    // ------------------------------------
 
     Route::get('/notifications', [
         NotificationController::class,
