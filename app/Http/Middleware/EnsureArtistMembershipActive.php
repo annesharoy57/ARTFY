@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Middleware;
 
 use Closure;
@@ -23,7 +22,7 @@ class EnsureArtistMembershipActive
             !$application ||
             $application->status !== 'approved' ||
             $application->payment_status !== 'verified' ||
-            $user->membership_status !== 'active'
+            !in_array($user->membership_status, ['active', 'approved'], true)
         ) {
             return redirect()
                 ->route('artist.application')

@@ -224,13 +224,7 @@ class DeliveryService
             );
         }
 
-        /*
-         * Keep the existing pricing formula:
-         *
-         * 750 km = ৳300 before applying the minimum/maximum.
-         * Short routes have a minimum fee of ৳40.
-         * All routes have a maximum fee of ৳300.
-         */
+
         $calculatedFee = self::MAX_DELIVERY_FEE
             * ($distanceKm / self::MAX_REFERENCE_DISTANCE_KM);
 

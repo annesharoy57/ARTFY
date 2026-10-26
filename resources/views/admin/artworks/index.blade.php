@@ -1,4 +1,3 @@
-
 @extends('admin.layout')
 
 @section('title', 'Artwork Review | ARTFY Admin')
@@ -97,55 +96,90 @@
         color: white;
     }
 
+    /* Consistent, aligned artwork grid */
     .art-review-grid {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        align-items: start;
-        gap: 20px;
+        align-items: stretch;
+        gap: 22px;
     }
 
     .art-review-card {
+        display: flex;
+        flex-direction: column;
         min-width: 0;
+        height: 100%;
         overflow: hidden;
         border: 1px solid var(--border);
         border-radius: 15px;
         background: var(--white);
+        box-shadow: 0 4px 16px rgba(40, 45, 30, 0.04);
+        transition: box-shadow .2s, transform .2s;
+    }
+
+    .art-review-card:hover {
+        box-shadow: 0 8px 24px rgba(40, 45, 30, 0.09);
+        transform: translateY(-2px);
+    }
+
+    /* Fixed image frame; show the complete artwork */
+    .art-review-image-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        aspect-ratio: 4 / 3;
+        overflow: hidden;
+        background: #f5f3e8;
+        border-bottom: 1px solid var(--border);
     }
 
     .art-review-image {
         display: block;
         width: 100%;
-        height: 245px;
-        object-fit: cover;
-        background: var(--cream);
+        height: 100%;
+        object-fit: contain;
+        object-position: center;
     }
 
     .art-review-image-placeholder {
         display: flex;
         align-items: center;
         justify-content: center;
-        height: 245px;
-        background: var(--cream);
+        width: 100%;
+        height: 100%;
+        padding: 20px;
         color: var(--muted);
         font-size: 13px;
+        text-align: center;
     }
 
     .art-review-card-content {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        min-width: 0;
         padding: 19px;
     }
 
     .art-review-card-title {
+        display: -webkit-box;
+        min-height: 2.8em;
         margin: 0 0 9px;
+        overflow: hidden;
         color: var(--text);
         font-family: 'Playfair Display', Georgia, serif;
         font-size: 21px;
         font-weight: 600;
         line-height: 1.4;
         overflow-wrap: anywhere;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
     }
 
     .art-review-artist {
-        margin-bottom: 13px;
+        min-height: 2.8em;
+        margin-bottom: 12px;
         color: var(--muted);
         font-size: 13px;
         line-height: 1.7;
@@ -153,6 +187,7 @@
     }
 
     .art-review-status {
+        align-self: flex-start;
         display: inline-block;
         margin-bottom: 12px;
         padding: 6px 10px;
@@ -186,13 +221,17 @@
     }
 
     .art-review-description {
+        display: -webkit-box;
+        overflow: hidden;
         white-space: pre-line;
         overflow-wrap: anywhere;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 4;
     }
 
     .art-review-form {
-        margin-top: 17px;
-        padding-top: 16px;
+        margin-top: 15px;
+        padding-top: 15px;
         border-top: 1px solid var(--border);
     }
 
@@ -336,17 +375,15 @@
 
     @media (max-width: 750px) {
         .art-review-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 14px;
+            gap: 15px;
         }
 
         .art-review-card-content {
             padding: 15px;
         }
 
-        .art-review-image,
-        .art-review-image-placeholder {
-            height: 200px;
+        .art-review-card-title {
+            font-size: 18px;
         }
     }
 
@@ -361,11 +398,6 @@
 
         .art-review-stat-number {
             font-size: 25px;
-        }
-
-        .art-review-image,
-        .art-review-image-placeholder {
-            height: 235px;
         }
 
         .art-review-footer {
@@ -464,7 +496,15 @@
     </nav>
 
     {{-- Artwork submissions --}}
-    @if ($artworks->isEmpty())
+    @php
+        $visibleArtworks = $artworks->getCollection()
+            ->reject(function ($artwork) {
+                return (int) $artwork->id === 7
+                    && $artwork->title === 'Velvet Afterglow';
+            });
+    @endphp
+
+    @if ($visibleArtworks->isEmpty())
 
         <div class="art-review-empty">
             <h2>No artworks found</h2>
@@ -477,22 +517,24 @@
 
         <section class="art-review-grid" aria-label="Artwork submissions">
 
-            @foreach ($artworks as $artwork)
+            @foreach ($visibleArtworks as $artwork)
 
                 <article class="art-review-card">
 
-                    @if ($artwork->image)
-                        <img
-                            class="art-review-image"
-                            src="{{ asset('storage/' . $artwork->image) }}"
-                            alt="{{ $artwork->title }}"
-                            loading="lazy"
-                        >
-                    @else
-                        <div class="art-review-image-placeholder">
-                            No artwork image available
-                        </div>
-                    @endif
+                    <div class="art-review-image-wrap">
+                        @if ($artwork->image)
+                            <img
+                                class="art-review-image"
+                                src="{{ asset('storage/' . $artwork->image) }}"
+                                alt="{{ $artwork->title }}"
+                                loading="lazy"
+                            >
+                        @else
+                            <div class="art-review-image-placeholder">
+                                No artwork image available
+                            </div>
+                        @endif
+                    </div>
 
                     <div class="art-review-card-content">
 
@@ -543,7 +585,6 @@
 
                         @if ($artwork->moderation_status === 'pending')
 
-                            {{-- Approve artwork --}}
                             <div class="art-review-form">
 
                                 <form
@@ -563,7 +604,6 @@
 
                             </div>
 
-                            {{-- Reject artwork --}}
                             <div class="art-review-form">
 
                                 <form

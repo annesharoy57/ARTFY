@@ -18,6 +18,20 @@ class AdminArtworkController extends Controller
     }
 
     /**
+     * Base query for artworks visible in the admin review page.
+     *
+     * Excludes only artwork ID 7 titled "Velvet Afterglow".
+     * The database record remains untouched.
+     */
+    private function visibleArtworksQuery()
+    {
+        return Artwork::query()->where(function ($query) {
+            $query->where('id', '!=', 7)
+                ->orWhere('title', '!=', 'Velvet Afterglow');
+        });
+    }
+
+    /**
      * Show artwork submissions and their moderation status.
      */
     public function index(Request $request)
@@ -30,7 +44,10 @@ class AdminArtworkController extends Controller
             $status = 'pending';
         }
 
-        $query = Artwork::with(['artist.artistProfile'])->latest();
+        // Exclude the specified artwork from every review tab.
+        $query = $this->visibleArtworksQuery()
+            ->with(['artist.artistProfile'])
+            ->latest();
 
         if ($status !== 'all') {
             $query->where('moderation_status', $status);
@@ -38,11 +55,21 @@ class AdminArtworkController extends Controller
 
         $artworks = $query->paginate(12)->withQueryString();
 
+        // All review counts exclude the same artwork.
         $counts = [
-            'pending' => Artwork::where('moderation_status', 'pending')->count(),
-            'approved' => Artwork::where('moderation_status', 'approved')->count(),
-            'rejected' => Artwork::where('moderation_status', 'rejected')->count(),
-            'all' => Artwork::count(),
+            'pending' => (clone $this->visibleArtworksQuery())
+                ->where('moderation_status', 'pending')
+                ->count(),
+
+            'approved' => (clone $this->visibleArtworksQuery())
+                ->where('moderation_status', 'approved')
+                ->count(),
+
+            'rejected' => (clone $this->visibleArtworksQuery())
+                ->where('moderation_status', 'rejected')
+                ->count(),
+
+            'all' => $this->visibleArtworksQuery()->count(),
         ];
 
         return view('admin.artworks.index', compact(
@@ -58,6 +85,13 @@ class AdminArtworkController extends Controller
     public function approve(Artwork $artwork)
     {
         $this->checkAdmin();
+
+        // Prevent the hidden artwork from being reviewed here.
+        abort_if(
+            (int) $artwork->id === 7
+                && $artwork->title === 'Velvet Afterglow',
+            404
+        );
 
         if ($artwork->moderation_status !== 'pending') {
             return back()->with(
@@ -82,6 +116,13 @@ class AdminArtworkController extends Controller
     {
         $this->checkAdmin();
 
+        // Prevent the hidden artwork from being reviewed here.
+        abort_if(
+            (int) $artwork->id === 7
+                && $artwork->title === 'Velvet Afterglow',
+            404
+        );
+
         if ($artwork->moderation_status !== 'pending') {
             return back()->with(
                 'error',
@@ -96,8 +137,8 @@ class AdminArtworkController extends Controller
         $artwork->moderation_status = 'rejected';
         $artwork->save();
 
-        // Notes are validated but not persisted yet because the
-        // current artworks table has no admin_notes column.
+        // Notes are validated but not persisted because the current
+        // artworks table has no admin_notes column.
         return back()->with(
             'success',
             'Artwork rejected. It has not been deleted.'

@@ -6,6 +6,7 @@ use App\Models\ArtistMembershipApplication;
 use App\Models\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class AdminMembershipController extends Controller
 {
@@ -46,9 +47,8 @@ class AdminMembershipController extends Controller
             ->where('status', 'rejected')
             ->count();
 
-        // Approved applications that have not completed payment.
+        // Payments awaiting SSLCOMMERZ confirmation.
         $paymentsToVerify = $applications
-            ->where('status', 'approved')
             ->where('payment_status', 'pending')
             ->count();
 
@@ -117,15 +117,13 @@ class AdminMembershipController extends Controller
 
     /**
      * Membership payments awaiting completion.
-     *
-     * This is not a manual transaction-verification queue.
      */
     public function payments()
     {
         $this->checkAdmin();
 
         $applications = ArtistMembershipApplication::with('user')
-            ->where('status', 'approved')
+            ->where('status', 'pending')
             ->where('payment_status', 'pending')
             ->latest()
             ->paginate(12);
@@ -162,11 +160,9 @@ class AdminMembershipController extends Controller
         )->count();
 
         $paymentsToVerify = ArtistMembershipApplication::where(
-            'status',
-            'approved'
-        )
-            ->where('payment_status', 'pending')
-            ->count();
+            'payment_status',
+            'pending'
+        )->count();
 
         $totalPayments = ArtistMembershipApplication::where(
             'payment_status',
@@ -185,8 +181,8 @@ class AdminMembershipController extends Controller
     }
 
     /**
-     * Approve an artist membership application.
-     * Approval does not activate paid membership.
+     * Approve an artist application only after verified payment.
+     * Membership lasts one year from approval.
      */
     public function approve(
         Request $request,
@@ -194,29 +190,61 @@ class AdminMembershipController extends Controller
     ) {
         $this->checkAdmin();
 
-        if ($application->status !== 'pending') {
-            return back()->with(
-                'error',
-                'Only pending applications can be approved.'
-            );
-        }
-
         $validated = $request->validate([
             'admin_notes' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        $application->status = 'approved';
-        $application->admin_notes = $validated['admin_notes'] ?? null;
-        $application->save();
+        $result = DB::transaction(function () use (
+            $application,
+            $validated
+        ) {
+            $lockedApplication = ArtistMembershipApplication::query()
+                ->whereKey($application->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        // Payment must still be verified by SSLCOMMERZ.
-        $user = $application->user;
-        $user->membership_status = 'pending';
-        $user->save();
+            if ($lockedApplication->status !== 'pending') {
+                return [
+                    'success' => false,
+                    'message' => 'Only pending applications can be approved.',
+                ];
+            }
+
+            if ($lockedApplication->payment_status !== 'verified') {
+                return [
+                    'success' => false,
+                    'message' => 'Approval is not allowed until SSLCOMMERZ payment has been verified.',
+                ];
+            }
+
+            $user = $lockedApplication->user;
+
+            if (! $user || $user->role !== 'artist') {
+                return [
+                    'success' => false,
+                    'message' => 'The artist account could not be found.',
+                ];
+            }
+
+            $lockedApplication->status = 'approved';
+            $lockedApplication->admin_notes =
+                $validated['admin_notes'] ?? null;
+            $lockedApplication->save();
+
+            // Start the annual membership when the admin approves.
+            $user->membership_status = 'active';
+            $user->membership_expires_at = now()->addYear();
+            $user->save();
+
+            return [
+                'success' => true,
+                'message' => 'Application approved. Artist membership is active for one year.',
+            ];
+        });
 
         return back()->with(
-            'success',
-            'Application approved. The artist can now pay the membership fee online.'
+            $result['success'] ? 'success' : 'error',
+            $result['message']
         );
     }
 
@@ -240,13 +268,28 @@ class AdminMembershipController extends Controller
             'admin_notes' => ['required', 'string', 'max:2000'],
         ]);
 
-        $application->status = 'rejected';
-        $application->admin_notes = $validated['admin_notes'];
-        $application->save();
+        DB::transaction(function () use ($application, $validated) {
+            $lockedApplication = ArtistMembershipApplication::query()
+                ->whereKey($application->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        $user = $application->user;
-        $user->membership_status = 'rejected';
-        $user->save();
+            if ($lockedApplication->status !== 'pending') {
+                return;
+            }
+
+            $lockedApplication->status = 'rejected';
+            $lockedApplication->admin_notes = $validated['admin_notes'];
+            $lockedApplication->save();
+
+            $user = $lockedApplication->user;
+
+            if ($user) {
+                $user->membership_status = 'rejected';
+                $user->membership_expires_at = null;
+                $user->save();
+            }
+        });
 
         return back()->with(
             'success',

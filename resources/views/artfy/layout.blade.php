@@ -8,6 +8,8 @@
     {{-- Page title --}}
     @if (request()->routeIs('home'))
         <title>Artfy | Discover Art</title>
+    @elseif (request()->routeIs('purchases.*'))
+        <title>My Purchases | Artfy</title>
     @elseif (request()->routeIs('my-profile'))
         <title>My Profile | Artfy</title>
     @elseif (request()->routeIs('artist-profile.*'))
@@ -52,7 +54,6 @@
     <link rel="stylesheet"
           href="{{ asset('css/artfy.css') }}?v=20261017-auth-roles">
 
-    {{-- Notification bell styling --}}
     <style>
         .header-actions {
             display: flex;
@@ -72,8 +73,7 @@
             border: 1px solid rgba(65, 76, 44, 0.18);
             border-radius: 50%;
             text-decoration: none;
-            transition: background-color 0.2s ease,
-                        transform 0.2s ease;
+            transition: background-color 0.2s ease, transform 0.2s ease;
         }
 
         .notification-bell-link:hover {
@@ -112,6 +112,10 @@
             outline-offset: 3px;
         }
 
+        .purchases-nav-link {
+            white-space: nowrap;
+        }
+
         @media (max-width: 600px) {
             .header-actions {
                 gap: 10px;
@@ -128,7 +132,6 @@
 </head>
 
 <body>
-
     {{-- ================= HEADER ================= --}}
     <header class="site-header">
 
@@ -179,13 +182,22 @@
                 Exhibitions
             </a>
 
+            {{-- Only Art Lovers can see My Purchases --}}
+            @auth
+                @if (auth()->user()->isArtLover())
+                    <a class="purchases-nav-link {{ request()->routeIs('purchases.*') ? 'active' : '' }}"
+                       href="{{ route('purchases.index') }}"
+                       @if (request()->routeIs('purchases.*')) aria-current="page" @endif>
+                        My Purchases
+                    </a>
+                @endif
+            @endauth
         </nav>
 
         {{-- Header actions --}}
         <div class="header-actions">
 
             @guest
-
                 <button type="button"
                         class="text-link auth-open-button"
                         data-auth-mode="login">
@@ -197,10 +209,9 @@
                         data-auth-mode="register">
                     Sign Up
                 </button>
-
             @else
 
-                {{-- Notification bell for signed-in users --}}
+                {{-- Notification bell --}}
                 @php
                     $unreadNotificationCount = auth()->user()
                         ->unreadNotifications()
@@ -229,10 +240,9 @@
                             {{ $unreadNotificationCount > 99 ? '99+' : $unreadNotificationCount }}
                         </span>
                     @endif
-
                 </a>
 
-                {{-- My Profile for artists and art lovers --}}
+                {{-- My Profile for non-admin users --}}
                 @unless (auth()->user()->isAdmin())
                     <a href="{{ route('my-profile') }}"
                        @class([
@@ -261,15 +271,12 @@
                         Logout
                     </button>
                 </form>
-
             @endguest
-
         </div>
     </header>
 
     {{-- ================= MAIN CONTENT ================= --}}
     <main>
-
         @if (session('success'))
             <div class="container">
                 <p class="success-message" role="status">
@@ -287,12 +294,10 @@
         @endif
 
         @yield('content')
-
     </main>
 
     {{-- ================= FOOTER ================= --}}
     <footer class="site-footer">
-
         <a class="brand footer-brand"
            href="{{ route('home') }}"
            aria-label="Artfy home">
@@ -323,6 +328,11 @@
             <a href="{{ route('favorites.index') }}">Favorites</a>
 
             @auth
+                {{-- Purchases are visible to Art Lovers only --}}
+                @if (auth()->user()->isArtLover())
+                    <a href="{{ route('purchases.index') }}">My Purchases</a>
+                @endif
+
                 @if (auth()->user()->isArtist())
                     <a href="{{ route('artist.studio') }}">Artist Studio</a>
                 @endif
@@ -336,7 +346,6 @@
         <span class="copyright">
             © {{ date('Y') }} Artfy
         </span>
-
     </footer>
 
     {{-- ================= LOGIN / SIGN-UP ROLE MODAL ================= --}}
@@ -373,8 +382,7 @@
             </div>
 
             <div class="auth-role-options">
-
-                {{-- 01: Artist --}}
+                {{-- Artist --}}
                 <a class="auth-role-card"
                    id="artistAuthLink"
                    href="{{ route('login', ['role' => 'artist']) }}">
@@ -385,25 +393,19 @@
                     </div>
 
                     <div class="auth-role-info">
-                        <span class="auth-role-kicker">
-                            CREATE &amp; EXHIBIT
-                        </span>
-
+                        <span class="auth-role-kicker">CREATE &amp; EXHIBIT</span>
                         <h3>I'm an Artist</h3>
-
                         <p>
                             Showcase your creations, build your portfolio,
                             and apply for artist membership.
                         </p>
-
                         <span class="auth-role-link" id="artistAuthAction">
-                            Login as Artist
-                            <span aria-hidden="true">→</span>
+                            Login as Artist <span aria-hidden="true">→</span>
                         </span>
                     </div>
                 </a>
 
-                {{-- 02: Art Lover --}}
+                {{-- Art Lover --}}
                 <a class="auth-role-card"
                    id="loverAuthLink"
                    href="{{ route('login', ['role' => 'art_lover']) }}">
@@ -414,25 +416,19 @@
                     </div>
 
                     <div class="auth-role-info">
-                        <span class="auth-role-kicker">
-                            DISCOVER &amp; COLLECT
-                        </span>
-
+                        <span class="auth-role-kicker">DISCOVER &amp; COLLECT</span>
                         <h3>I'm an Art Lover</h3>
-
                         <p>
                             Discover beautiful art, follow artists,
                             save favorites, and collect your favorite pieces.
                         </p>
-
                         <span class="auth-role-link" id="loverAuthAction">
-                            Login as Art Lover
-                            <span aria-hidden="true">→</span>
+                            Login as Art Lover <span aria-hidden="true">→</span>
                         </span>
                     </div>
                 </a>
 
-                {{-- 03: Admin (visible ONLY during Login) --}}
+                {{-- Admin: login only --}}
                 <a class="auth-role-card admin-role-card"
                    id="adminAuthLink"
                    href="{{ route('login', ['role' => 'admin']) }}"
@@ -444,31 +440,23 @@
                     </div>
 
                     <div class="auth-role-info">
-                        <span class="auth-role-kicker">
-                            ADMINISTRATION
-                        </span>
-
+                        <span class="auth-role-kicker">ADMINISTRATION</span>
                         <h3>I'm an Admin</h3>
-
                         <p>
                             Access the administration area using
                             your authorized administrator account.
                         </p>
-
                         <span class="auth-role-link" id="adminAuthAction">
-                            Login as Admin
-                            <span aria-hidden="true">→</span>
+                            Login as Admin <span aria-hidden="true">→</span>
                         </span>
                     </div>
                 </a>
-
             </div>
 
             <p class="auth-modal-note">
                 <span aria-hidden="true">✦</span>
                 Every great collection begins with a discovery.
             </p>
-
         </section>
     </div>
 
@@ -494,14 +482,12 @@
 
             let previousFocus = null;
 
-            // Laravel generates the URLs for each role.
             const urls = {
                 login: {
                     artist: @json(route('login', ['role' => 'artist'])),
                     art_lover: @json(route('login', ['role' => 'art_lover'])),
                     admin: @json(route('login', ['role' => 'admin']))
                 },
-
                 register: {
                     artist: @json(route('register', ['role' => 'artist'])),
                     art_lover: @json(route('register', ['role' => 'art_lover']))
@@ -509,7 +495,6 @@
             };
 
             function setActionLabel(element, label) {
-                // Change only the label, preserving the existing arrow span.
                 element.firstChild.textContent = label + ' ';
             }
 
@@ -527,11 +512,9 @@
                     ? 'Choose your place in our art community.'
                     : 'Choose the type of account you want to access.';
 
-                // Artist and Art Lover are available in both modes.
                 artistLink.href = urls[page].artist;
                 loverLink.href = urls[page].art_lover;
 
-                // Admin is available ONLY when Login is selected.
                 adminLink.hidden = isRegister;
 
                 if (!isRegister) {
@@ -548,10 +531,7 @@
                     isRegister ? 'Create Free Account' : 'Login as Art Lover'
                 );
 
-                setActionLabel(
-                    adminAction,
-                    'Login as Admin'
-                );
+                setActionLabel(adminAction, 'Login as Admin');
 
                 modal.inert = false;
                 modal.setAttribute('aria-hidden', 'false');
@@ -575,19 +555,16 @@
                 }
             }
 
-            // Open the modal from Login and Sign Up.
             document.querySelectorAll('[data-auth-mode]').forEach(button => {
                 button.addEventListener('click', () => {
                     openModal(button.dataset.authMode);
                 });
             });
 
-            // Close from the close button or backdrop.
             modal.querySelectorAll('[data-auth-close]').forEach(element => {
                 element.addEventListener('click', closeModal);
             });
 
-            // Close with Escape.
             document.addEventListener('keydown', event => {
                 if (
                     event.key === 'Escape' &&
@@ -600,6 +577,5 @@
     </script>
 
     @stack('scripts')
-
 </body>
 </html>

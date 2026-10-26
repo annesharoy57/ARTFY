@@ -33,7 +33,6 @@ class GalleryController extends Controller
     {
         $query = trim((string) $request->query('q', ''));
 
-        // Physical or digital artwork format.
         $artworkFormat = strtolower(trim(
             (string) $request->query('artwork_type', '')
         ));
@@ -117,7 +116,6 @@ class GalleryController extends Controller
             }
         ));
 
-        // Keep the existing sorting options.
         switch ($sort) {
             case 'oldest':
                 usort(
@@ -181,10 +179,7 @@ class GalleryController extends Controller
             'query' => $query,
             'artworkFormat' => $artworkFormat,
             'mediumFilter' => $mediumFilter,
-
-            // Retain this for any older code that still reads artType.
             'artType' => $mediumFilter,
-
             'maxPrice' => $maxPriceInput,
             'sort' => $sort,
         ]);
@@ -216,119 +211,67 @@ class GalleryController extends Controller
 
         $selected = $normalize($selectedType);
 
-        // Check both category and medium.
         $values = array_unique(array_filter([
             $category,
             $medium,
         ]));
 
-        // Match medium names and common variations.
         $aliases = [
             'oil painting' => [
-                'oil painting',
-                'oil',
-                'oil on canvas',
-                'oil on linen',
-                'oil on wood',
-                'oil paint',
-                'oil paints',
+                'oil painting', 'oil', 'oil on canvas',
+                'oil on linen', 'oil on wood', 'oil paint', 'oil paints',
             ],
-
             'watercolor painting' => [
-                'watercolor painting',
-                'watercolour painting',
-                'watercolor',
-                'watercolour',
-                'watercolor on paper',
-                'watercolour on paper',
-                'watercolor paint',
+                'watercolor painting', 'watercolour painting',
+                'watercolor', 'watercolour', 'watercolor on paper',
+                'watercolour on paper', 'watercolor paint',
                 'watercolour paint',
             ],
-
             'pastel painting' => [
-                'pastel painting',
-                'pastel',
-                'soft pastel',
-                'oil pastel',
-                'pastels',
-                'pastel on paper',
+                'pastel painting', 'pastel', 'soft pastel',
+                'oil pastel', 'pastels', 'pastel on paper',
             ],
-
             'acrylic painting' => [
-                'acrylic painting',
-                'acrylic',
-                'acrylic paint',
-                'acrylic on canvas',
-                'acrylic on paper',
+                'acrylic painting', 'acrylic', 'acrylic paint',
+                'acrylic on canvas', 'acrylic on paper',
             ],
-
             'ink wash painting' => [
-                'ink wash painting',
-                'ink wash',
-                'ink wash art',
-                'literati painting',
-                'chinese ink painting',
-                'sumi e',
-                'sumi e painting',
+                'ink wash painting', 'ink wash', 'ink wash art',
+                'literati painting', 'chinese ink painting',
+                'sumi e', 'sumi e painting',
             ],
-
             'encaustic painting' => [
-                'encaustic painting',
-                'encaustic',
-                'hot wax painting',
-                'hot wax',
-                'wax painting',
+                'encaustic painting', 'encaustic', 'hot wax painting',
+                'hot wax', 'wax painting',
             ],
-
             'spray painting' => [
-                'spray painting',
-                'spray paint',
-                'spray art',
+                'spray painting', 'spray paint', 'spray art',
                 'aerosol art',
             ],
-
             'sketching' => [
-                'sketching',
-                'sketch',
-                'pencil sketch',
-                'pen sketch',
-                'charcoal sketch',
-                'sketch drawing',
-                'drawing',
+                'sketching', 'sketch', 'pencil sketch', 'pen sketch',
+                'charcoal sketch', 'sketch drawing', 'drawing',
             ],
-
             'photography' => [
-                'photography',
-                'photograph',
-                'photo',
-                'digital photography',
-                'film photography',
+                'photography', 'photograph', 'photo',
+                'digital photography', 'film photography',
                 'photographic print',
             ],
-
             'digital painting' => [
-                'digital painting',
-                'digital art',
-                'digital illustration',
-                'digital drawing',
-                'digital',
+                'digital painting', 'digital art', 'digital illustration',
+                'digital drawing', 'digital',
             ],
         ];
 
         $selectedAliases = $aliases[$selected] ?? [$selected];
 
         foreach ($values as $value) {
-            // Exact match.
             if (in_array($value, $selectedAliases, true)) {
                 return true;
             }
 
-            // Match saved details such as "Original oil painting".
             foreach ($selectedAliases as $alias) {
-                if (
-                    $alias !== ''
-                    && str_contains($value, $alias)
-                ) {
+                if ($alias !== '' && str_contains($value, $alias)) {
                     return true;
                 }
             }
@@ -353,7 +296,6 @@ class GalleryController extends Controller
 
     /**
      * Display exhibitions.
-     * No exhibition database model is connected yet.
      */
     public function exhibitions(): View
     {
@@ -369,8 +311,7 @@ class GalleryController extends Controller
     /**
      * Display an approved artwork.
      *
-     * Available and sold artworks remain viewable.
-     * Only the owning artist can manage their own uploaded artwork.
+     * Only the owning artist can manage their uploaded artwork.
      */
     public function artwork(string $slug): View
     {
@@ -408,8 +349,6 @@ class GalleryController extends Controller
             'is_uploaded' => true,
             'status' => $uploadedArtwork->status,
             'is_sold' => $uploadedArtwork->status === 'sold',
-
-            // Show management controls only to the owning artist.
             'can_manage' => auth()->check()
                 && (int) auth()->id() === (int) $uploadedArtwork->user_id
                 && auth()->user()->isArtist(),
@@ -425,7 +364,10 @@ class GalleryController extends Controller
     }
 
     /**
-     * Display a public artist profile and portfolio.
+     * Display a public artist profile.
+     *
+     * This is the shared visual design, but public visitors must not
+     * receive artist-management buttons.
      */
     public function artist(string $slug): View
     {
@@ -444,36 +386,18 @@ class GalleryController extends Controller
             })
             ->findOrFail((int) $matches[1]);
 
-        $profile = $artist->artistProfile;
-        $application = $artist->artistApplication;
-
         $artworks = Artwork::where('user_id', $artist->id)
             ->whereIn('status', ['available', 'sold'])
             ->where('moderation_status', 'approved')
             ->latest()
             ->get();
 
-        return view('artfy.artist-public-profile', [
-            'artist' => $artist,
-            'profile' => $profile,
-            'application' => $application,
+        return view('artfy.artist-profile-show', [
+            'user' => $artist,
+            'profile' => $artist->artistProfile,
             'artworks' => $artworks,
-
-            'artistName' => $profile?->artist_name
-                ?: $artist->name,
-
-            'discipline' => $profile?->art_category
-                ?: $application?->art_category
-                ?: 'Independent artist',
-
-            'bio' => $profile?->bio
-                ?: $application?->biography
-                ?: 'This artist is part of the Artfy creative community.',
-
-            'profilePhoto' => $profile?->profile_photo,
-            'coverPhoto' => $profile?->cover_photo,
-            'location' => $profile?->location,
-            'portfolioUrl' => $profile?->portfolio_url,
+            'adminPreview' => false,
+            'canManageArtistProfile' => false,
         ]);
     }
 
@@ -510,10 +434,7 @@ class GalleryController extends Controller
                         : null,
                     'category' => $artwork->category ?: 'Other',
                     'type' => $artwork->medium ?: 'Not specified',
-
-                    // Artwork format is separate from the artistic medium.
                     'artwork_type' => $artwork->artwork_type ?: 'physical',
-
                     'price' => $artwork->price,
                     'likes' => 0,
                     'color' => 'green',

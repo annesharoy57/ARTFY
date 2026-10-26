@@ -293,18 +293,22 @@
             max-width: 800px;
         }
 
-        .footer-note {
-            color: var(--muted);
-            font-size: 12px;
-            line-height: 1.7;
-            margin-top: 36px;
-            padding-top: 20px;
-            border-top: 1px solid var(--border);
-        }
 
-        .footer-note a {
-            color: var(--olive);
-        }
+.footer-note {
+    color: #f5f3e8;
+    background: #414c2c;
+    font-size: 12px;
+    line-height: 1.7;
+    margin-top: 36px;
+    padding: 20px;
+    border-top: 1px solid #55613a;
+}
+
+.footer-note a {
+    color: #f5f3e8;
+    text-decoration: underline;
+}
+
 
         /* =========================================
            ALERTS

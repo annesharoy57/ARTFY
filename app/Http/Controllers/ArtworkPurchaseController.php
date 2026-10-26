@@ -14,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
+use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Throwable;
 
@@ -1146,4 +1147,57 @@ class ArtworkPurchaseController extends Controller
             return response('IPN could not be verified', 422);
         }
     }
+
+    /**
+     * Show the logged-in buyer's purchases.
+     */
+    public function myPurchases(): View
+    {
+        $orders = Order::with('artwork')
+            ->where('buyer_id', auth()->id())
+            ->latest()
+            ->get();
+
+        return view('artfy.my-purchases', compact('orders'));
+    }
+
+    /**
+     * Download the original file for a verified digital purchase.
+     */
+    public function downloadDigitalArtwork(Order $order)
+    {
+        // Only the buyer who owns this order can download it.
+        abort_unless(
+            (int) $order->buyer_id === (int) auth()->id(),
+            403
+        );
+
+        // Payment must be verified by the existing payment flow.
+        abort_unless(
+            $order->payment_status === 'verified',
+            403
+        );
+
+        $artwork = $order->artwork;
+
+        // Only digital artworks with an original file are downloadable.
+        abort_unless(
+            $artwork !== null
+                && $artwork->artwork_type === 'digital'
+                && filled($artwork->digital_file_path),
+            404
+        );
+
+        // Original files are stored on Laravel's private local disk.
+        $disk = Storage::disk('local');
+        $filePath = $artwork->digital_file_path;
+
+        abort_unless(
+            $disk->exists($filePath),
+            404
+        );
+
+        return $disk->download($filePath);
+    }
+
 }

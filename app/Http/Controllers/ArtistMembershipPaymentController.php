@@ -16,7 +16,10 @@ use Throwable;
 class ArtistMembershipPaymentController extends Controller
 {
     /**
-     * Start or resume checkout for an approved artist membership.
+     * Start or resume SSLCOMMERZ checkout for an artist membership.
+     *
+     * Applications may be pending or approved, but rejected applications
+     * and already verified payments cannot start a new checkout.
      */
     public function store(
         Request $request,
@@ -31,17 +34,17 @@ class ArtistMembershipPaymentController extends Controller
             $user->id
         )->firstOrFail();
 
-        if ($application->status !== 'approved') {
+        if (! in_array($application->status, ['pending', 'approved'], true)) {
             return redirect()->route('artist.application')->with(
                 'error',
-                'Your membership application must be approved before payment.'
+                'Your rejected membership application cannot be paid.'
             );
         }
 
         if ($application->payment_status === 'verified') {
             return redirect()->route('artist.application')->with(
                 'success',
-                'Your membership payment has already been verified.'
+                'Your membership payment has already been verified. Your application is awaiting any required admin approval.'
             );
         }
 
@@ -70,7 +73,7 @@ class ArtistMembershipPaymentController extends Controller
         }
 
         try {
-            // Keep the same reference while this checkout is pending.
+            // Keep the same transaction reference while checkout is pending.
             if (
                 $application->payment_status !== 'pending'
                 || blank($application->payment_reference)
@@ -139,7 +142,7 @@ class ArtistMembershipPaymentController extends Controller
 
     /**
      * Browser success callback.
-     * The callback alone is not proof of payment.
+     * The browser callback alone is not proof of payment.
      */
     public function success(
         Request $request,
@@ -163,7 +166,7 @@ class ArtistMembershipPaymentController extends Controller
 
             return redirect()->route('login')->with(
                 'success',
-                'Your membership payment has been verified. You can now log in.'
+                'Your membership payment has been verified. Your application must be approved by an admin before your membership becomes active.'
             );
         } catch (Throwable $e) {
             report($e);
@@ -227,12 +230,10 @@ class ArtistMembershipPaymentController extends Controller
     }
 
     /**
-     * Verify payment directly with SSLCOMMERZ.
+     * Verify the payment directly with SSLCOMMERZ.
      *
-     * Membership is activated only after gateway validation and matching
-     * transaction details. Admin notifications are created in the same
-     * transaction as the status change, preventing duplicate notifications
-     * from repeated success/IPN callbacks.
+     * Despite this method's historical name, it verifies payment only.
+     * It does not activate membership or set a membership expiry date.
      */
     private function verifyAndActivate(
         string $tranId,
@@ -244,15 +245,15 @@ class ArtistMembershipPaymentController extends Controller
             $tranId
         )->firstOrFail();
 
-        if ($application->status !== 'approved') {
-            throw new RuntimeException(
-                'The membership application is not approved.'
-            );
-        }
-
-        // A previously verified payment must not be processed again.
+        // A verified transaction is idempotent on repeated callbacks.
         if ($application->payment_status === 'verified') {
             return;
+        }
+
+        if (! in_array($application->status, ['pending', 'approved'], true)) {
+            throw new RuntimeException(
+                'The membership application is not eligible for payment verification.'
+            );
         }
 
         if ($application->payment_status !== 'pending') {
@@ -261,6 +262,7 @@ class ArtistMembershipPaymentController extends Controller
             );
         }
 
+        // Ask SSLCOMMERZ to validate the transaction server-side.
         $gateway = $sslCommerz->validateTransaction($validationId);
 
         $gatewayStatus = strtoupper(
@@ -333,14 +335,13 @@ class ArtistMembershipPaymentController extends Controller
                 $application->id
             )->lockForUpdate()->firstOrFail();
 
-            // Another callback may have verified the payment while
-            // gateway validation was in progress.
+            // Another callback may have completed verification meanwhile.
             if ($locked->payment_status === 'verified') {
                 return;
             }
 
             if (
-                $locked->status !== 'approved'
+                ! in_array($locked->status, ['pending', 'approved'], true)
                 || $locked->payment_status !== 'pending'
             ) {
                 throw new RuntimeException(
@@ -348,7 +349,9 @@ class ArtistMembershipPaymentController extends Controller
                 );
             }
 
-            $user = $locked->user()->lockForUpdate()->firstOrFail();
+            $user = User::whereKey($locked->user_id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
             if ($user->role !== 'artist') {
                 throw new RuntimeException(
@@ -356,41 +359,56 @@ class ArtistMembershipPaymentController extends Controller
                 );
             }
 
-            // Mark the payment as verified and activate membership.
+            // Record successful payment verification only.
             $locked->payment_method = 'sslcommerz';
             $locked->payment_status = 'verified';
             $locked->payment_verified_at = now();
             $locked->save();
 
-            $user->membership_status = 'active';
-            $user->save();
+            // IMPORTANT:
+            // Do not activate membership here.
+            // Do not set membership_expires_at here.
+            // Admin approval starts the one-year membership period.
 
-            // Notify all admins only for this successful status transition.
+            if ($user->membership_status !== 'active') {
+                $user->membership_status = 'pending';
+                $user->save();
+            }
+
+            // Notify admins only when this callback changes the payment
+            // from pending to verified. The transaction prevents duplicate
+            // notifications from concurrent success/IPN callbacks.
             $admins = User::where('role', 'admin')->get();
 
             foreach ($admins as $admin) {
-                $admin->notify(new ArtfyDatabaseNotification(
-                    'artfy.membership_payment_verified',
-                    [
-                        'title' => 'Artist membership payment verified',
-                        'message' => $user->name
-                            . ' has successfully paid BDT '
-                            . number_format(
-                                (float) $locked->membership_fee,
-                                2
-                            )
-                            . ' for artist membership.',
-                        'url' => route('admin.memberships.index', [], false),
-                        'artist_id' => $user->id,
-                        'artist_name' => $user->name,
-                        'application_id' => $locked->id,
-                        'payment_reference' => $locked->payment_reference,
-                        'payment_method' => 'sslcommerz',
-                        'amount' => (float) $locked->membership_fee,
-                        'payment_verified_at' => $locked->payment_verified_at
-                            ?->toDateTimeString(),
-                    ]
-                ));
+                $admin->notify(
+                    new ArtfyDatabaseNotification(
+                        'artfy.membership_payment_verified',
+                        [
+                            'title' => 'Artist membership payment verified',
+                            'message' => $user->name
+                                . ' has successfully paid BDT '
+                                . number_format(
+                                    (float) $locked->membership_fee,
+                                    2
+                                )
+                                . ' for artist membership.',
+                            'url' => route(
+                                'admin.memberships.index',
+                                [],
+                                false
+                            ),
+                            'artist_id' => $user->id,
+                            'artist_name' => $user->name,
+                            'application_id' => $locked->id,
+                            'payment_reference' => $locked->payment_reference,
+                            'payment_method' => 'sslcommerz',
+                            'amount' => (float) $locked->membership_fee,
+                            'payment_verified_at' => $locked->payment_verified_at
+                                ?->toDateTimeString(),
+                        ]
+                    )
+                );
             }
         });
     }
