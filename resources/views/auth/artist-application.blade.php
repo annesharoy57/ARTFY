@@ -257,10 +257,10 @@
             <h1>Share your art with the world.</h1>
 
             <p class="application-description">
-                Complete your artist membership application.
-                Our Admin team will review your information.
-                Artist Studio access becomes available after membership
-                approval and successful payment verification.
+                Submit your artist membership application and pay the annual
+                membership fee through SSLCOMMERZ. Your application must be
+                approved by the Admin before Artist Studio access is activated.
+                Your one-year membership period starts on the approval date.
             </p>
 
             @if (session('success'))
@@ -301,7 +301,7 @@
                         <strong>Art categories:</strong>
                         {{ count($application->art_categories ?? []) > 0
                             ? implode(', ', $application->art_categories)
-                            : $application->art_category }}
+                            : ($application->art_category ?? 'Not specified') }}
                     </p>
 
                     <p>
@@ -314,6 +314,13 @@
                         {{ ucfirst($application->payment_status) }}
                     </p>
 
+                    @if ($application->payment_reference)
+                        <p>
+                            <strong>Payment reference:</strong>
+                            {{ $application->payment_reference }}
+                        </p>
+                    @endif
+
                     @if ($application->admin_notes)
                         <p>
                             <strong>Admin feedback:</strong>
@@ -321,30 +328,73 @@
                         </p>
                     @endif
 
-                    @if (
+                    @if ($application->status === 'rejected')
+
+                        <p class="payment-warning">
+                            Your application was rejected. Please review
+                            the Admin feedback or contact the Admin for
+                            clarification. Payment is unavailable for a
+                            rejected application.
+                        </p>
+
+                    @elseif (
                         $application->status === 'approved' &&
                         $application->payment_status === 'verified'
                     )
+
+                        @if (
+                            auth()->user()->membership_status === 'active' &&
+                            auth()->user()->membership_expires_at &&
+                            auth()->user()->membership_expires_at->isFuture()
+                        )
+                            <p class="payment-notice">
+                                Your payment has been verified and your
+                                membership is active.
+                            </p>
+
+                            <p>
+                                <strong>Membership expires:</strong>
+                                {{ auth()->user()->membership_expires_at->format('d M Y') }}
+                            </p>
+
+                            <a href="{{ route('artist.studio') }}">
+                                Go to Artist Studio &rarr;
+                            </a>
+                        @else
+                            <p class="payment-notice">
+                                Your payment has been verified and your
+                                application is approved. Your membership
+                                is awaiting activation or renewal.
+                            </p>
+                        @endif
+
+                    @elseif (
+                        $application->status === 'pending' &&
+                        $application->payment_status === 'verified'
+                    )
+
                         <p class="payment-notice">
-                            Your membership payment has been verified.
-                            You can now access Artist Studio.
+                            Your payment has been verified. Your application
+                            is awaiting Admin approval. Artist Studio access
+                            will be available after approval.
                         </p>
 
-                        <a href="{{ route('artist.studio') }}">
-                            Go to Artist Studio &rarr;
-                        </a>
-                    @elseif ($application->status === 'rejected')
-                        <p class="payment-warning">
-                            Your application was rejected.
-                            Please review the Admin feedback or contact
-                            the Admin for clarification.
-                        </p>
                     @elseif ($application->status === 'pending')
+
                         <p>
                             Your application is awaiting Admin review.
-                            Online membership payment will be available
-                            after approval.
+                            You can pay the annual membership fee now.
+                            The Admin must verify your application and payment
+                            before membership is activated.
                         </p>
+
+                    @elseif ($application->status === 'approved')
+
+                        <p>
+                            Your application has been approved. Complete
+                            your membership payment to proceed with activation.
+                        </p>
+
                     @endif
                 </div>
 
@@ -361,45 +411,48 @@
                         </span>
                     </div>
 
-                    @if (
-                        $application->status === 'approved' &&
-                        $application->payment_status === 'verified'
-                    )
-                        <p class="payment-notice">
-                            Your membership payment has been verified.
-                            Thank you for supporting Artfy.
-                        </p>
-
-                    @elseif ($application->status !== 'approved')
+                    @if ($application->status === 'rejected')
 
                         <p class="payment-warning">
-                            @if ($application->status === 'rejected')
-                                Payment is unavailable because your
-                                application has been rejected.
-                            @else
+                            Payment is unavailable because your application
+                            has been rejected.
+                        </p>
+
+                    @elseif ($application->payment_status === 'verified')
+
+                        <p class="payment-notice">
+                            Your membership payment has been verified.
+                            @if ($application->status === 'pending')
                                 Please wait for Admin approval before
-                                making your membership payment.
+                                Artist Studio access is activated.
+                            @elseif ($application->status === 'approved')
+                                @if (
+                                    auth()->user()->membership_status === 'active' &&
+                                    auth()->user()->membership_expires_at &&
+                                    auth()->user()->membership_expires_at->isFuture()
+                                )
+                                    Your membership is active. Thank you
+                                    for supporting Artfy.
+                                @else
+                                    Your application is approved. If access
+                                    is not active, please contact the Admin.
+                                @endif
                             @endif
                         </p>
 
                     @elseif ($application->payment_status === 'pending')
 
                         <p class="payment-notice">
-                            Your checkout has been initiated or is awaiting
-                            confirmation. Membership will activate only after
-                            Artfy verifies the payment with SSLCOMMERZ.
-                        </p>
-
-                        <p>
-                            <strong>Payment reference:</strong><br>
-                            {{ $application->payment_reference ?: 'Pending' }}
+                            Your payment is awaiting confirmation from
+                            SSLCOMMERZ. This status does not mean the payment
+                            has been verified.
                         </p>
 
                         <div class="payment-method-note">
-                            If you left the gateway without completing payment,
-                            return to checkout using the button below. If a
-                            previous payment may have succeeded, check with
-                            Artfy support before attempting another payment.
+                            If you left checkout before completing payment,
+                            you can return to the gateway below. If you may
+                            already have been charged, check with Artfy
+                            support before retrying.
                         </div>
 
                         <form
@@ -414,18 +467,18 @@
                             </button>
                         </form>
 
-                    @else
+                    @elseif (in_array($application->status, ['pending', 'approved'], true))
 
                         <p>
-                            Your application has been approved. You can now
-                            pay the annual membership fee securely through
-                            SSLCOMMERZ.
+                            Pay your annual membership fee securely through
+                            SSLCOMMERZ. Payment verification alone does not
+                            activate your membership.
                         </p>
 
                         <div class="payment-method-note">
-                            You will be redirected to the SSLCOMMERZ payment
-                            page. Artfy will verify the payment with the
-                            gateway before activating your membership.
+                            After payment, Artfy will verify the transaction
+                            with SSLCOMMERZ. Your Artist Studio access will
+                            be activated only after Admin approval.
                         </div>
 
                         <form
@@ -436,9 +489,17 @@
                             @csrf
 
                             <button type="submit" class="application-button">
-                                Pay Membership Fee with SSLCOMMERZ
+                                Pay ৳{{ number_format($application->membership_fee ?? 1000) }}
+                                with SSLCOMMERZ
                             </button>
                         </form>
+
+                    @else
+
+                        <p class="payment-warning">
+                            Your application status does not currently allow
+                            payment. Please contact the Admin.
+                        </p>
 
                     @endif
                 </div>
@@ -459,8 +520,10 @@
                     </div>
 
                     <p>
-                        Submit your application for Admin review.
-                        If approved, you can pay online through SSLCOMMERZ.
+                        Submit your application and then pay through
+                        SSLCOMMERZ. Your application will be reviewed by
+                        the Admin. If approved, your one-year membership
+                        starts on the approval date.
                     </p>
                 </div>
 

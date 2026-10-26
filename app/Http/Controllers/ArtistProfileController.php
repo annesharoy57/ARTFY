@@ -9,6 +9,9 @@ use Illuminate\Support\Facades\Storage;
 
 class ArtistProfileController extends Controller
 {
+    /**
+     * Display the current user's profile.
+     */
     public function show()
     {
         $user = auth()->user();
@@ -17,6 +20,10 @@ class ArtistProfileController extends Controller
             return redirect()->route('home');
         }
 
+        /*
+         * ARTIST PROFILE
+         * Artists keep their existing profile page and artwork sections.
+         */
         if ($user->isArtist()) {
             $profile = $user->artistProfile;
 
@@ -30,7 +37,7 @@ class ArtistProfileController extends Controller
             })->values();
 
             $availableArtworks = $artworks->filter(function ($artwork) {
-                return !$artwork->is_sold
+                return !(bool) $artwork->is_sold
                     && $artwork->status === 'available'
                     && $artwork->moderation_status === 'approved';
             })->values();
@@ -39,7 +46,7 @@ class ArtistProfileController extends Controller
                 $isSold = (bool) $artwork->is_sold
                     || $artwork->status === 'sold';
 
-                $isAvailable = !$artwork->is_sold
+                $isAvailable = !(bool) $artwork->is_sold
                     && $artwork->status === 'available'
                     && $artwork->moderation_status === 'approved';
 
@@ -53,29 +60,55 @@ class ArtistProfileController extends Controller
 
             $totalSales = $salesNotifications->count();
 
-            return view('artfy.artist-profile-show', compact(
-                'user',
-                'profile',
-                'artworks',
-                'availableArtworks',
-                'soldArtworks',
-                'otherArtworks',
-                'salesNotifications',
-                'totalSales'
-            ));
+            return view('artfy.artist-profile-show', [
+                'user' => $user,
+                'profile' => $profile,
+                'artworks' => $artworks,
+                'availableArtworks' => $availableArtworks,
+                'soldArtworks' => $soldArtworks,
+                'otherArtworks' => $otherArtworks,
+                'salesNotifications' => $salesNotifications,
+                'totalSales' => $totalSales,
+                'adminPreview' => false,
+                'canManageArtistProfile' => true,
+            ]);
         }
 
+        /*
+         * ART LOVER PROFILE
+         * Art Lovers must never use the Artist Profile view.
+         */
         if ($user->isArtLover()) {
-            return view('artfy.lover-profile', compact('user'));
+            return view('artfy.lover-profile', [
+                'user' => $user,
+            ]);
         }
 
+        /*
+         * ADMIN PROFILE
+         * Keep the existing artist-style preview for administrators.
+         */
         if ($user->isAdmin()) {
-            return redirect()->route('admin.dashboard');
+            return view('artfy.artist-profile-show', [
+                'user' => $user,
+                'profile' => null,
+                'artworks' => collect(),
+                'availableArtworks' => collect(),
+                'soldArtworks' => collect(),
+                'otherArtworks' => collect(),
+                'salesNotifications' => collect(),
+                'totalSales' => 0,
+                'adminPreview' => false,
+                'canManageArtistProfile' => false,
+            ]);
         }
 
         abort(403);
     }
 
+    /**
+     * Display the artist profile editing form.
+     */
     public function edit()
     {
         $user = auth()->user();
@@ -87,6 +120,9 @@ class ArtistProfileController extends Controller
         return view('artfy.artist-profile', compact('user', 'profile'));
     }
 
+    /**
+     * Save artist profile changes.
+     */
     public function update(Request $request)
     {
         $user = auth()->user();
@@ -105,6 +141,7 @@ class ArtistProfileController extends Controller
                 'between:-90,90',
                 'required_with:longitude',
             ],
+
             'longitude' => [
                 'nullable',
                 'numeric',
@@ -120,6 +157,7 @@ class ArtistProfileController extends Controller
                 'mimes:jpg,jpeg,png,webp',
                 'max:2048',
             ],
+
             'cover_photo' => [
                 'nullable',
                 'image',
@@ -152,6 +190,9 @@ class ArtistProfileController extends Controller
             ->with('success', 'Your profile has been saved successfully!');
     }
 
+    /**
+     * Display the Art Lover profile editing form.
+     */
     public function editArtLover()
     {
         $user = auth()->user();
@@ -161,6 +202,9 @@ class ArtistProfileController extends Controller
         return view('artfy.lover-profile-edit', compact('user'));
     }
 
+    /**
+     * Save Art Lover profile changes.
+     */
     public function updateArtLover(Request $request)
     {
         $user = auth()->user();
@@ -169,14 +213,17 @@ class ArtistProfileController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+
             'email' => [
                 'required',
                 'email',
                 'max:255',
                 'unique:users,email,' . $user->id,
             ],
+
             'phone' => ['nullable', 'string', 'max:30'],
             'address' => ['nullable', 'string', 'max:1000'],
+
             'profile_photo' => [
                 'nullable',
                 'image',

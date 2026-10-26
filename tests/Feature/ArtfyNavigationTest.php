@@ -143,17 +143,20 @@ class ArtfyNavigationTest extends TestCase
     }
 
     /**
-     * The homepage should show its art discovery sections and valid routes.
+     * The homepage should show its current art discovery sections and valid routes.
      */
     public function test_homepage_shows_art_discovery_sections_and_routes(): void
     {
         $response = $this->get('/');
 
         $response->assertOk()
-            ->assertSee('A gallery without walls')
-            ->assertSee('Explore by medium')
-            ->assertSee('Artworks to fall for')
-            ->assertSee('Come see it differently')
+            ->assertSee('WHERE WILL CURIOSITY TAKE YOU?')
+            ->assertSee('Explore by')
+            ->assertSee('medium.')
+            ->assertSee('Artworks to')
+            ->assertSee('fall for.')
+            ->assertSee('Come see it')
+            ->assertSee('differently.')
             ->assertSee('Find your next favourite')
             ->assertSee(route('artworks.index'), false)
             ->assertSee(route('artists.index'), false)

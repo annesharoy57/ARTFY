@@ -3331,3 +3331,117 @@ body.auth-modal-open {
     }
 }
 
+
+/* ===== ARTfy GLOBAL OLIVE THEME FIX ===== */
+
+/* Navigation background */
+.site-header {
+    background: #414c2c !important;
+    color: #f5f3e8 !important;
+    border-color: #414c2c !important;
+}
+
+/* Logo and navigation text */
+.site-header .brand,
+.site-header .brand-word,
+.site-header .brand-art,
+.site-header .brand-fy,
+.site-header .brand-dot,
+.site-header .main-nav a,
+.site-header .header-actions .text-link,
+.site-header .notification-bell-link {
+    color: #f5f3e8 !important;
+}
+
+/* Keep the navigation cream-colored on hover and active pages */
+.site-header .main-nav a:hover,
+.site-header .main-nav a:focus-visible {
+    color: #e6c65a !important;
+}
+
+.site-header .main-nav a.active,
+.site-header .main-nav a.active:hover,
+.site-header .header-actions .text-link:hover,
+.site-header .header-actions .text-link.active {
+    color: #f5f3e8 !important;
+}
+
+/* Keep the existing navigation underline visible */
+.site-header .main-nav a::after {
+    background-color: #f5f3e8 !important;
+}
+
+/* Make Profile and Logout readable */
+.site-header .header-actions .text-link {
+    color: #f5f3e8 !important;
+}
+
+.site-header .logout-form .button,
+.site-header .header-actions .button.button-dark.button-small {
+    color: #f5f3e8 !important;
+    background: transparent !important;
+    border: 1px solid #f5f3e8 !important;
+}
+
+.site-header .logout-form .button:hover,
+.site-header .header-actions .button.button-dark.button-small:hover {
+    color: #414c2c !important;
+    background: #f5f3e8 !important;
+    border-color: #f5f3e8 !important;
+}
+
+/* Olive footer across the shared public layout */
+.site-footer {
+    background: #414c2c !important;
+    color: #f5f3e8 !important;
+    border-color: #414c2c !important;
+}
+
+.site-footer a,
+.site-footer p,
+.site-footer span,
+.site-footer li,
+.site-footer h1,
+.site-footer h2,
+.site-footer h3 {
+    color: #f5f3e8 !important;
+}
+
+.site-footer a:hover {
+    color: #ffffff !important;
+}
+/* Fix My Profile and Logout hover visibility */
+.site-header .header-actions .text-link,
+.site-header .logout-form .button {
+    opacity: 1 !important;
+    filter: none !important;
+    transition: color 0.18s ease, background-color 0.18s ease,
+                border-color 0.18s ease !important;
+}
+
+.site-header .header-actions .text-link:hover {
+    color: #e6c65a !important;
+    opacity: 1 !important;
+}
+
+.site-header .logout-form .button:hover {
+    color: #414c2c !important;
+    background: #f5f3e8 !important;
+    border-color: #f5f3e8 !important;
+    opacity: 1 !important;
+}
+
+/* Fix notification bell hover visibility */
+.site-header .notification-bell-link:hover,
+.site-header .notification-bell-link:focus-visible {
+    background: #f5f3e8 !important;
+    color: #414c2c !important;
+    opacity: 1 !important;
+}
+
+.site-header .notification-bell-link:hover svg,
+.site-header .notification-bell-link:focus-visible svg {
+    color: #414c2c !important;
+    stroke: #414c2c !important;
+    fill: none !important;
+}

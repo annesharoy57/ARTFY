@@ -4,8 +4,8 @@
 
 @section('content')
 <div class="upload-page">
-    <a class="upload-back" href="{{ route('artist.studio') }}">
-        ← Back to Artist Studio
+    <a class="upload-back" href="{{ route('my-profile') }}">
+        ← Back to My Profile
     </a>
 
     <h1>Upload new artwork</h1>
