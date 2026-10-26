@@ -159,6 +159,22 @@ Route::middleware('auth')->group(function () {
         'geocodeDestination',
     ])->name('artworks.delivery.geocode');
 
+
+    // ------------------------------------
+    // BUYER PURCHASE HISTORY / DOWNLOADS
+    // ------------------------------------
+
+    Route::get('/my-purchases', [
+        ArtworkPurchaseController::class,
+        'myPurchases',
+    ])->name('purchases.index');
+
+    Route::get('/orders/{order}/digital-download', [
+        ArtworkPurchaseController::class,
+        'downloadDigitalArtwork',
+    ])->name('orders.digital-download');
+
+
     // ------------------------------------
     // ARTIST APPLICATION AND MEMBERSHIP
     // Pending artists must retain access.

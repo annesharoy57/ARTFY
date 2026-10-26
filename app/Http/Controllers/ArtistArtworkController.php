@@ -15,7 +15,11 @@ use Throwable;
 class ArtistArtworkController extends Controller
 {
     /**
-     * Check whether the current user has an active artist membership.
+     * Check whether the current user has an eligible artist membership.
+     *
+     * Supports legacy artists whose membership_status is "approved",
+     * as well as artists whose membership_status is "active".
+     * Application approval and verified payment are still required.
      */
     private function checkArtistAccess()
     {
@@ -33,7 +37,7 @@ class ArtistArtworkController extends Controller
             !$application ||
             $application->status !== 'approved' ||
             $application->payment_status !== 'verified' ||
-            $user->membership_status !== 'active'
+            !in_array($user->membership_status, ['active', 'approved'], true)
         ) {
             return redirect()
                 ->route('artist.application')
@@ -49,8 +53,10 @@ class ArtistArtworkController extends Controller
     /**
      * Notify every administrator about an artwork awaiting moderation.
      */
-    private function notifyAdminsAboutArtwork(Artwork $artwork, string $event): void
-    {
+    private function notifyAdminsAboutArtwork(
+        Artwork $artwork,
+        string $event
+    ): void {
         $artist = User::find($artwork->user_id);
 
         if (!$artist) {
@@ -185,6 +191,7 @@ class ArtistArtworkController extends Controller
         }
 
         $digitalFilePath = null;
+        $artwork = null;
 
         try {
             if ($validated['artwork_type'] === 'digital') {
@@ -222,7 +229,6 @@ class ArtistArtworkController extends Controller
                 ]);
             });
 
-            // Notify administrators only after the artwork is saved.
             $this->notifyAdminsAboutArtwork($artwork, 'submitted');
         } catch (Throwable $exception) {
             Storage::disk('public')->delete($imagePath);
@@ -407,7 +413,6 @@ class ArtistArtworkController extends Controller
 
             $artwork->refresh();
 
-            // Notify admins that the artwork needs another review.
             $this->notifyAdminsAboutArtwork($artwork, 'updated');
         } catch (Throwable $exception) {
             if ($newImagePath) {
@@ -421,7 +426,6 @@ class ArtistArtworkController extends Controller
             throw $exception;
         }
 
-        // Remove replaced files only after the database update succeeds.
         if ($newImagePath && $oldImagePath) {
             Storage::disk('public')->delete($oldImagePath);
         }
