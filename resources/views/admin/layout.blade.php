@@ -526,6 +526,13 @@
             </a>
 
             <a
+                href="{{ route('admin.exhibitions.index') }}"
+                class="nav-link {{ request()->routeIs('admin.exhibitions.*') ? 'active' : '' }}"
+            >
+                ◇ &nbsp; Online Exhibitions
+            </a>
+
+            <a
                 href="{{ route('admin.memberships.index') }}"
                 class="nav-link {{ request()->routeIs('admin.memberships.*') ? 'active' : '' }}"
             >
