@@ -51,6 +51,11 @@ class User extends Authenticatable
         return $this->hasMany(Artwork::class);
     }
 
+    public function exhibitionApplications(): HasMany
+    {
+        return $this->hasMany(ExhibitionApplication::class);
+    }
+
     /**
      * Use the custom notification model to generate UUIDs.
      */
