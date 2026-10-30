@@ -45,6 +45,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'payment/sslcommerz/*',
             'membership/payment/*',
+            'exhibition/payment/*',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

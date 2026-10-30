@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Artwork;
+use App\Models\Exhibition;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -37,7 +38,7 @@ class GalleryController extends Controller
             (string) $request->query('artwork_type', '')
         ));
 
-        if (!in_array($artworkFormat, ['', 'physical', 'digital'], true)) {
+        if (! in_array($artworkFormat, ['', 'physical', 'digital'], true)) {
             $artworkFormat = '';
         }
 
@@ -63,7 +64,7 @@ class GalleryController extends Controller
             'price-high',
         ];
 
-        if (!in_array($sort, $allowedSorts, true)) {
+        if (! in_array($sort, $allowedSorts, true)) {
             $sort = 'latest';
         }
 
@@ -120,8 +121,7 @@ class GalleryController extends Controller
             case 'oldest':
                 usort(
                     $artworks,
-                    fn (array $a, array $b): int =>
-                        ($a['_created_at'] ?? 0)
+                    fn (array $a, array $b): int => ($a['_created_at'] ?? 0)
                         <=> ($b['_created_at'] ?? 0)
                 );
                 break;
@@ -129,8 +129,7 @@ class GalleryController extends Controller
             case 'popular':
                 usort(
                     $artworks,
-                    fn (array $a, array $b): int =>
-                        ($b['likes'] ?? 0)
+                    fn (array $a, array $b): int => ($b['likes'] ?? 0)
                         <=> ($a['likes'] ?? 0)
                 );
                 break;
@@ -138,8 +137,7 @@ class GalleryController extends Controller
             case 'price-low':
                 usort(
                     $artworks,
-                    fn (array $a, array $b): int =>
-                        ($a['price'] ?? PHP_INT_MAX)
+                    fn (array $a, array $b): int => ($a['price'] ?? PHP_INT_MAX)
                         <=> ($b['price'] ?? PHP_INT_MAX)
                 );
                 break;
@@ -147,8 +145,7 @@ class GalleryController extends Controller
             case 'price-high':
                 usort(
                     $artworks,
-                    fn (array $a, array $b): int =>
-                        ($b['price'] ?? -1)
+                    fn (array $a, array $b): int => ($b['price'] ?? -1)
                         <=> ($a['price'] ?? -1)
                 );
                 break;
@@ -157,8 +154,7 @@ class GalleryController extends Controller
             default:
                 usort(
                     $artworks,
-                    fn (array $a, array $b): int =>
-                        ($b['_created_at'] ?? 0)
+                    fn (array $a, array $b): int => ($b['_created_at'] ?? 0)
                         <=> ($a['_created_at'] ?? 0)
                 );
                 break;
@@ -315,7 +311,7 @@ class GalleryController extends Controller
      */
     public function artwork(string $slug): View
     {
-        if (!preg_match('/^uploaded-(\d+)$/', $slug, $matches)) {
+        if (! preg_match('/^uploaded-(\d+)$/', $slug, $matches)) {
             abort(404);
         }
 
@@ -331,14 +327,14 @@ class GalleryController extends Controller
 
         $artwork = [
             'id' => $uploadedArtwork->id,
-            'slug' => 'uploaded-' . $uploadedArtwork->id,
+            'slug' => 'uploaded-'.$uploadedArtwork->id,
             'title' => $uploadedArtwork->title,
             'description' => $uploadedArtwork->description
                 ?: 'Explore this original artwork on Artfy.',
             'artist' => $profile?->artist_name
                 ?: ($artist?->name ?? 'Artfy Artist'),
             'artist_slug' => $artist
-                ? 'artist-' . $artist->id
+                ? 'artist-'.$artist->id
                 : null,
             'category' => $uploadedArtwork->category ?: 'Other',
             'type' => $uploadedArtwork->medium ?: 'Not specified',
@@ -371,7 +367,7 @@ class GalleryController extends Controller
      */
     public function artist(string $slug): View
     {
-        if (!preg_match('/^artist-(\d+)$/', $slug, $matches)) {
+        if (! preg_match('/^artist-(\d+)$/', $slug, $matches)) {
             abort(404);
         }
 
@@ -406,7 +402,48 @@ class GalleryController extends Controller
      */
     public function exhibition(string $slug): View
     {
-        abort(404);
+        $exhibition = Exhibition::query()
+            ->where('status', 'published')
+            ->with([
+                'applications' => fn ($query) => $query
+                    ->where('status', 'confirmed')
+                    ->with([
+                        'artist.artistProfile',
+                    ]),
+            ])
+            ->where('slug', $slug)
+            ->firstOrFail();
+
+        $reservedCount = $exhibition->applications()
+            ->reservesArtistPlace()
+            ->count();
+        $enrolledCount = $exhibition->applications()
+            ->reservesArtistPlace()
+            ->count();
+        $pendingPaymentCount = $exhibition->applications()
+            ->activePaymentReservation()
+            ->count();
+
+        $existingApplication = auth()->check()
+            ? $exhibition->applications()
+                ->where('user_id', auth()->id())
+                ->first()
+            : null;
+
+        $registrationWindowOpen = $exhibition->status === 'published'
+            && $exhibition->registrationIsOpen();
+        $registrationOpen = $registrationWindowOpen
+            && $reservedCount < $exhibition->max_artists;
+
+        return view('artfy.exhibition-detail', compact(
+            'exhibition',
+            'reservedCount',
+            'enrolledCount',
+            'pendingPaymentCount',
+            'existingApplication',
+            'registrationOpen',
+            'registrationWindowOpen'
+        ));
     }
 
     /**
@@ -425,12 +462,12 @@ class GalleryController extends Controller
 
                 return [
                     'id' => $artwork->id,
-                    'slug' => 'uploaded-' . $artwork->id,
+                    'slug' => 'uploaded-'.$artwork->id,
                     'title' => $artwork->title,
                     'artist' => $profile?->artist_name
                         ?: ($artist?->name ?? 'Artfy Artist'),
                     'artist_slug' => $artist
-                        ? 'artist-' . $artist->id
+                        ? 'artist-'.$artist->id
                         : null,
                     'category' => $artwork->category ?: 'Other',
                     'type' => $artwork->medium ?: 'Not specified',
@@ -469,7 +506,7 @@ class GalleryController extends Controller
                 $application = $artist->artistApplication;
 
                 return [
-                    'slug' => 'artist-' . $artist->id,
+                    'slug' => 'artist-'.$artist->id,
                     'name' => $profile?->artist_name ?: $artist->name,
                     'discipline' => $profile?->art_category
                         ?: $application?->art_category
@@ -484,11 +521,31 @@ class GalleryController extends Controller
             ->all();
     }
 
-    /**
-     * Return no exhibitions until a real exhibition data source exists.
-     */
     private function exhibitionCollection(): array
     {
-        return [];
+        return Exhibition::query()
+            ->where('status', 'published')
+            ->withCount([
+                'applications as reserved_artists_count' => fn ($query) => $query
+                    ->reservesArtistPlace(),
+            ])
+            ->orderBy('starts_at')
+            ->get()
+            ->map(fn (Exhibition $exhibition): array => [
+                'id' => $exhibition->id,
+                'slug' => $exhibition->slug,
+                'title' => $exhibition->title,
+                'subtitle' => $exhibition->subtitle
+                    ?: $exhibition->starts_at->format('M j, Y'),
+                'description' => $exhibition->description,
+                'starts_at' => $exhibition->starts_at,
+                'registration_fee' => $exhibition->registration_fee,
+                'remaining_places' => max(
+                    0,
+                    $exhibition->max_artists - $exhibition->reserved_artists_count
+                ),
+                'color' => 'green',
+            ])
+            ->all();
     }
 }

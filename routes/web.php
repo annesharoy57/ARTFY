@@ -1,15 +1,17 @@
 <?php
 
-use App\Http\Controllers\GalleryController;
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\ArtistProfileController;
-use App\Http\Controllers\AdminMembershipController;
-use App\Http\Controllers\ArtistArtworkController;
 use App\Http\Controllers\AdminArtworkController;
+use App\Http\Controllers\AdminExhibitionController;
+use App\Http\Controllers\AdminMembershipController;
 use App\Http\Controllers\AdminUserController;
-use App\Http\Controllers\ArtworkPurchaseController;
-use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ArtistArtworkController;
 use App\Http\Controllers\ArtistMembershipPaymentController;
+use App\Http\Controllers\ArtistProfileController;
+use App\Http\Controllers\ArtworkPurchaseController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ExhibitionApplicationController;
+use App\Http\Controllers\GalleryController;
+use App\Http\Controllers\NotificationController;
 use Illuminate\Support\Facades\Route;
 
 // ========================================
@@ -131,6 +133,31 @@ Route::post('/membership/payment/ipn', [
 ])->name('membership.payment.ipn');
 
 // ========================================
+// EXHIBITION SSLCOMMERZ CALLBACKS
+// Separate from existing checkout callbacks.
+// ========================================
+
+Route::post('/exhibition/payment/success', [
+    ExhibitionApplicationController::class,
+    'success',
+])->name('exhibition.payment.success');
+
+Route::post('/exhibition/payment/fail', [
+    ExhibitionApplicationController::class,
+    'fail',
+])->name('exhibition.payment.fail');
+
+Route::post('/exhibition/payment/cancel', [
+    ExhibitionApplicationController::class,
+    'cancel',
+])->name('exhibition.payment.cancel');
+
+Route::post('/exhibition/payment/ipn', [
+    ExhibitionApplicationController::class,
+    'ipn',
+])->name('exhibition.payment.ipn');
+
+// ========================================
 // AUTHENTICATED ROUTES
 // ========================================
 
@@ -159,7 +186,6 @@ Route::middleware('auth')->group(function () {
         'geocodeDestination',
     ])->name('artworks.delivery.geocode');
 
-
     // ------------------------------------
     // BUYER PURCHASE HISTORY / DOWNLOADS
     // ------------------------------------
@@ -173,7 +199,6 @@ Route::middleware('auth')->group(function () {
         ArtworkPurchaseController::class,
         'downloadDigitalArtwork',
     ])->name('orders.digital-download');
-
 
     // ------------------------------------
     // ARTIST APPLICATION AND MEMBERSHIP
@@ -194,6 +219,21 @@ Route::middleware('auth')->group(function () {
         ArtistMembershipPaymentController::class,
         'store',
     ])->name('artist.application.payment.store');
+
+    Route::post('/exhibitions/{exhibition}/apply', [
+        ExhibitionApplicationController::class,
+        'apply',
+    ])->name('exhibitions.apply');
+
+    Route::post('/exhibitions/{exhibition}/submit-artwork', [
+        ExhibitionApplicationController::class,
+        'submitArtwork',
+    ])->name('exhibitions.submit-artwork');
+
+    Route::put('/exhibitions/{exhibition}/artwork', [
+        ExhibitionApplicationController::class,
+        'updateArtwork',
+    ])->name('exhibitions.update-artwork');
 
     // ------------------------------------
     // GENERAL PROFILE
@@ -294,6 +334,36 @@ Route::middleware('auth')->group(function () {
             AdminMembershipController::class,
             'sales',
         ])->name('admin.sales.index');
+
+        Route::get('/admin/exhibitions', [
+            AdminExhibitionController::class,
+            'index',
+        ])->name('admin.exhibitions.index');
+
+        Route::get('/admin/exhibitions/create', [
+            AdminExhibitionController::class,
+            'create',
+        ])->name('admin.exhibitions.create');
+
+        Route::post('/admin/exhibitions', [
+            AdminExhibitionController::class,
+            'store',
+        ])->name('admin.exhibitions.store');
+
+        Route::get('/admin/exhibitions/{exhibition}/edit', [
+            AdminExhibitionController::class,
+            'edit',
+        ])->name('admin.exhibitions.edit');
+
+        Route::put('/admin/exhibitions/{exhibition}', [
+            AdminExhibitionController::class,
+            'update',
+        ])->name('admin.exhibitions.update');
+
+        Route::get('/admin/exhibitions/{exhibition}/applications', [
+            AdminExhibitionController::class,
+            'applications',
+        ])->name('admin.exhibitions.applications');
 
         Route::post('/admin/memberships/{application}/approve', [
             AdminMembershipController::class,
