@@ -27,6 +27,9 @@
     $artist = $item['artist'] ?? null;
     $description = $item['description'] ?? $description ?? '';
     $price = $item['price'] ?? null;
+    $isUploadedArtwork = !empty($item['is_uploaded']);
+    $likeCount = $likeCount ?? 0;
+    $comments = $comments ?? collect();
 @endphp
 
 <section class="artwork-detail-page">
@@ -244,6 +247,101 @@
                         </form>
                     </div>
                 </div>
+            @endif
+
+            @if ($isUploadedArtwork)
+                <section class="artwork-community" aria-labelledby="artwork-community-title">
+                    <div class="artwork-community-heading">
+                        <div>
+                            <p class="artwork-community-eyebrow">ARTFY COMMUNITY</p>
+                            <h2 id="artwork-community-title">Likes &amp; comments</h2>
+                        </div>
+                        <span class="artwork-community-count">
+                            {{ number_format($likeCount) }}
+                            {{ \Illuminate\Support\Str::plural('like', $likeCount) }}
+                        </span>
+                    </div>
+
+                    @auth
+                        @if (auth()->user()->isArtLover())
+                            <div class="artwork-community-actions">
+                                @if ($isLiked ?? false)
+                                    <form
+                                        action="{{ route('artworks.unlike', ['artwork' => $item['id']]) }}"
+                                        method="POST"
+                                    >
+                                        @csrf
+                                        @method('DELETE')
+                                        <button class="artwork-like-button is-liked" type="submit">
+                                            <span aria-hidden="true">♥</span> Liked
+                                        </button>
+                                    </form>
+                                @else
+                                    <form
+                                        action="{{ route('artworks.like', ['artwork' => $item['id']]) }}"
+                                        method="POST"
+                                    >
+                                        @csrf
+                                        <button class="artwork-like-button" type="submit">
+                                            <span aria-hidden="true">♡</span> Like artwork
+                                        </button>
+                                    </form>
+                                @endif
+                            </div>
+
+                            <form
+                                class="artwork-comment-form"
+                                action="{{ route('artworks.comments.store', ['artwork' => $item['id']]) }}"
+                                method="POST"
+                            >
+                                @csrf
+                                <label for="artwork-comment-body">Leave a comment</label>
+                                <textarea
+                                    id="artwork-comment-body"
+                                    name="body"
+                                    rows="3"
+                                    maxlength="2000"
+                                    required
+                                    placeholder="Share what you think about this artwork..."
+                                >{{ old('body') }}</textarea>
+                                <button class="artwork-comment-submit" type="submit">
+                                    Post comment
+                                </button>
+                            </form>
+                        @endif
+                    @else
+                        <a
+                            class="artwork-like-button"
+                            href="{{ route('login', ['redirect' => url()->current()]) }}"
+                        >
+                            Log in to like or comment
+                        </a>
+                    @endauth
+
+                    <div class="artwork-comments" aria-label="Artwork comments">
+                        @forelse ($comments as $comment)
+                            <article class="artwork-comment">
+                                <div class="artwork-comment-meta">
+                                    <strong>{{ $comment->user->name }}</strong>
+                                    <time datetime="{{ $comment->created_at?->toAtomString() }}">
+                                        {{ $comment->created_at?->diffForHumans() }}
+                                    </time>
+                                </div>
+                                <p>{{ $comment->body }}</p>
+                            </article>
+                        @empty
+                            <p class="artwork-no-comments">
+                                No comments yet. Be the first to share your thoughts.
+                            </p>
+                        @endforelse
+                    </div>
+
+                    @if ($comments->hasPages())
+                        <div class="artwork-comments-pagination">
+                            {{ $comments->links() }}
+                        </div>
+                    @endif
+                </section>
             @endif
 
         </div>
@@ -657,6 +755,135 @@
         color: #777b6a;
         font-size: 0.83rem;
         line-height: 1.6;
+    }
+
+    .artwork-community {
+        margin-top: 24px;
+        padding: 22px;
+        border: 1px solid var(--detail-border);
+        border-radius: 6px;
+        background: #fffef9;
+    }
+
+    .artwork-community-heading,
+    .artwork-comment-meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .artwork-community-heading h2 {
+        margin: 4px 0 0;
+        color: var(--detail-dark-olive);
+        font-family: "Playfair Display", Georgia, serif;
+        font-size: 1.4rem;
+        font-weight: 500;
+    }
+
+    .artwork-community-eyebrow {
+        margin: 0;
+        color: var(--detail-muted-olive);
+        font-size: 0.65rem;
+        font-weight: 750;
+        letter-spacing: 0.14em;
+    }
+
+    .artwork-community-count,
+    .artwork-comment-meta time {
+        color: var(--detail-muted-olive);
+        font-size: 0.8rem;
+    }
+
+    .artwork-community-actions {
+        margin-top: 18px;
+    }
+
+    .artwork-community-actions form {
+        margin: 0;
+    }
+
+    .artwork-like-button,
+    .artwork-comment-submit {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 42px;
+        padding: 10px 16px;
+        border: 1px solid var(--detail-olive);
+        border-radius: 4px;
+        background: var(--detail-olive);
+        color: #fff;
+        font: inherit;
+        font-size: 0.88rem;
+        font-weight: 650;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .artwork-like-button.is-liked {
+        background: transparent;
+        color: var(--detail-olive);
+    }
+
+    .artwork-comment-form {
+        display: grid;
+        gap: 9px;
+        margin-top: 20px;
+    }
+
+    .artwork-comment-form label {
+        color: var(--detail-dark-olive);
+        font-size: 0.88rem;
+        font-weight: 650;
+    }
+
+    .artwork-comment-form textarea {
+        width: 100%;
+        min-height: 92px;
+        padding: 12px;
+        border: 1px solid var(--detail-border);
+        border-radius: 4px;
+        background: #fff;
+        color: var(--detail-ink);
+        font: inherit;
+        line-height: 1.5;
+        resize: vertical;
+    }
+
+    .artwork-comment-submit {
+        justify-self: start;
+    }
+
+    .artwork-comments {
+        display: grid;
+        gap: 14px;
+        margin-top: 22px;
+    }
+
+    .artwork-comments-pagination {
+        margin-top: 18px;
+    }
+
+    .artwork-comment {
+        padding-top: 14px;
+        border-top: 1px solid var(--detail-border);
+    }
+
+    .artwork-comment-meta strong {
+        color: var(--detail-dark-olive);
+        font-size: 0.88rem;
+    }
+
+    .artwork-comment p,
+    .artwork-no-comments {
+        margin: 8px 0 0;
+        color: var(--detail-muted-olive);
+        font-size: 0.9rem;
+        line-height: 1.65;
+        white-space: pre-line;
+        overflow-wrap: anywhere;
     }
 
     .artwork-owner-actions {

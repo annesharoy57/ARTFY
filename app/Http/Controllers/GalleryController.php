@@ -360,6 +360,14 @@ class GalleryController extends Controller
             'description' => $artwork['description'],
             'item' => $artwork,
             'pageType' => 'artwork',
+            'likeCount' => $uploadedArtwork->likes()->count(),
+            'isLiked' => auth()->user()?->isArtLover()
+                && $uploadedArtwork->likes()
+                    ->whereKey(auth()->id())
+                    ->exists(),
+            'comments' => $uploadedArtwork->comments()
+                ->with('user')
+                ->paginate(20),
         ]);
     }
 

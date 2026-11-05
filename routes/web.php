@@ -11,6 +11,7 @@ use App\Http\Controllers\ArtworkPurchaseController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ArtistMembershipPaymentController;
 use App\Http\Controllers\ArtistFollowController;
+use App\Http\Controllers\ArtworkEngagementController;
 use Illuminate\Support\Facades\Route;
 
 // ========================================
@@ -149,6 +150,21 @@ Route::middleware('auth')->group(function () {
         ArtistFollowController::class,
         'unfollow',
     ])->name('artists.unfollow');
+
+    Route::post('/artworks/{artwork}/like', [
+        ArtworkEngagementController::class,
+        'like',
+    ])->name('artworks.like');
+
+    Route::delete('/artworks/{artwork}/like', [
+        ArtworkEngagementController::class,
+        'unlike',
+    ])->name('artworks.unlike');
+
+    Route::post('/artworks/{artwork}/comments', [
+        ArtworkEngagementController::class,
+        'comment',
+    ])->name('artworks.comments.store');
 
     // ------------------------------------
     // ARTWORK PURCHASE / CHECKOUT
