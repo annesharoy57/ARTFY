@@ -10,6 +10,7 @@ use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\ArtworkPurchaseController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ArtistMembershipPaymentController;
+use App\Http\Controllers\ArtistFollowController;
 use Illuminate\Support\Facades\Route;
 
 // ========================================
@@ -138,6 +139,16 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout'])
         ->name('logout');
+
+    Route::post('/artists/{artist}/follow', [
+        ArtistFollowController::class,
+        'follow',
+    ])->name('artists.follow');
+
+    Route::delete('/artists/{artist}/follow', [
+        ArtistFollowController::class,
+        'unfollow',
+    ])->name('artists.unfollow');
 
     // ------------------------------------
     // ARTWORK PURCHASE / CHECKOUT

@@ -69,6 +69,7 @@ class ArtistProfileController extends Controller
                 'otherArtworks' => $otherArtworks,
                 'salesNotifications' => $salesNotifications,
                 'totalSales' => $totalSales,
+                'followerCount' => $user->followers()->count(),
                 'adminPreview' => false,
                 'canManageArtistProfile' => true,
             ]);

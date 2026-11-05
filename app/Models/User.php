@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -49,6 +50,26 @@ class User extends Authenticatable
     public function artworks(): HasMany
     {
         return $this->hasMany(Artwork::class);
+    }
+
+    public function followers(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            self::class,
+            'artist_follows',
+            'artist_id',
+            'follower_id'
+        )->withTimestamps();
+    }
+
+    public function following(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            self::class,
+            'artist_follows',
+            'follower_id',
+            'artist_id'
+        )->withTimestamps();
     }
 
     /**

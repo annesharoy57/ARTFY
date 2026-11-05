@@ -102,6 +102,7 @@ class AdminUserController extends Controller
             'user' => $user,
             'profile' => $profile,
             'artworks' => $artworks,
+            'followerCount' => $user->followers()->count(),
             'availableArtworks' => $availableArtworks,
             'soldArtworks' => $soldArtworks,
             'otherArtworks' => $otherArtworks,

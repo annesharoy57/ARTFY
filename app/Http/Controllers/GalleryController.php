@@ -396,6 +396,10 @@ class GalleryController extends Controller
             'user' => $artist,
             'profile' => $artist->artistProfile,
             'artworks' => $artworks,
+            'followerCount' => $artist->followers()->count(),
+            'isFollowingArtist' => auth()->user()?->following()
+                ->whereKey($artist->id)
+                ->exists() ?? false,
             'adminPreview' => false,
             'canManageArtistProfile' => false,
         ]);
