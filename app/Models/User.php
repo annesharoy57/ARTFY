@@ -72,6 +72,11 @@ class User extends Authenticatable
         )->withTimestamps();
     }
 
+    public function exhibitionApplications(): HasMany
+    {
+        return $this->hasMany(ExhibitionApplication::class);
+    }
+
     /**
      * Use the custom notification model to generate UUIDs.
      */
