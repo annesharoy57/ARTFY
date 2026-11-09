@@ -187,14 +187,17 @@
 
                 <div class="artfy-carousel-stage" data-carousel-stage>
                     @foreach ($artworks as $index => $artwork)
-                        <a
+                        <article
                             class="artfy-carousel-card"
                             data-carousel-card
                             data-carousel-index="{{ $index }}"
-                            href="{{ route('artworks.show', $artwork['slug']) }}"
-                            aria-label="View {{ $artwork['title'] }}"
-                            @if ($index > 0) tabindex="-1" @endif
                         >
+                            <a
+                                class="artfy-carousel-card-link"
+                                href="{{ route('artworks.show', $artwork['slug']) }}"
+                                aria-label="View {{ $artwork['title'] }}"
+                                @if ($index > 0) tabindex="-1" @endif
+                            >
                             <div class="artfy-carousel-image artwork-art {{ $artwork['color'] ?? 'green' }} artwork-composition-{{ ($index % 3) + 1 }}">
                                 @if (!empty($artwork['image']))
                                     <img
@@ -226,7 +229,43 @@
                                     ৳{{ number_format((float) ($artwork['price'] ?? 0), 2) }}
                                 </strong>
                             </div>
-                        </a>
+                            </a>
+
+                            @auth
+                                @if (auth()->user()->isArtLover())
+                                    <form
+                                        class="artfy-carousel-save"
+                                        action="{{ route('artworks.favorite', $artwork['id']) }}"
+                                        method="POST"
+                                    >
+                                        @csrf
+                                        <input type="hidden" name="return_to" value="{{ request()->getRequestUri() }}">
+                                        <button
+                                            class="artfy-carousel-save-button"
+                                            type="submit"
+                                            aria-label="{{ $artwork['is_saved'] ? 'Remove from favorites' : 'Save to favorites' }}"
+                                            aria-pressed="{{ $artwork['is_saved'] ? 'true' : 'false' }}"
+                                            @if ($index > 0) tabindex="-1" @endif
+                                        >
+                                            <svg class="artwork-save-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path d="M6 4.5A2.5 2.5 0 0 1 8.5 2h7A2.5 2.5 0 0 1 18 4.5V22l-6-4-6 4V4.5Z"/>
+                                            </svg>
+                                        </button>
+                                    </form>
+                                @endif
+                            @else
+                                <a
+                                    class="artfy-carousel-save artfy-carousel-save-button"
+                                    href="{{ route('login', ['redirect' => url()->current()]) }}"
+                                    aria-label="Log in to save to favorites"
+                                    @if ($index > 0) tabindex="-1" @endif
+                                >
+                                    <svg class="artwork-save-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="M6 4.5A2.5 2.5 0 0 1 8.5 2h7A2.5 2.5 0 0 1 18 4.5V22l-6-4-6 4V4.5Z"/>
+                                    </svg>
+                                </a>
+                            @endauth
+                        </article>
                     @endforeach
                 </div>
 
@@ -441,7 +480,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 card.style.pointerEvents = visible ? 'auto' : 'none';
                 card.setAttribute('aria-hidden', visible ? 'false' : 'true');
-                card.tabIndex = position === 0 ? 0 : -1;
+                const cardLink = card.querySelector('.artfy-carousel-card-link');
+                const saveAction = card.querySelector('.artfy-carousel-save-button');
+
+                if (cardLink) cardLink.tabIndex = position === 0 ? 0 : -1;
+                if (saveAction) saveAction.tabIndex = position === 0 ? 0 : -1;
+
+                card.tabIndex = -1;
                 card.classList.toggle('is-active', position === 0);
             });
 

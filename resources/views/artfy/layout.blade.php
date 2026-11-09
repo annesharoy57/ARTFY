@@ -182,9 +182,15 @@
                 Exhibitions
             </a>
 
-            {{-- Only Art Lovers can see My Purchases --}}
+            {{-- Only Art Lovers can access favorites and purchases. --}}
             @auth
                 @if (auth()->user()->isArtLover())
+                    <a class="{{ request()->routeIs('favorites.*') ? 'active' : '' }}"
+                       href="{{ route('favorites.index') }}"
+                       @if (request()->routeIs('favorites.*')) aria-current="page" @endif>
+                        Favorites
+                    </a>
+
                     <a class="purchases-nav-link {{ request()->routeIs('purchases.*') ? 'active' : '' }}"
                        href="{{ route('purchases.index') }}"
                        @if (request()->routeIs('purchases.*')) aria-current="page" @endif>
@@ -260,6 +266,13 @@
                     </a>
                 @endunless
 
+                @if (auth()->user()->isArtist())
+                    <a href="{{ route('artist.wallet') }}"
+                       class="text-link {{ request()->routeIs('artist.wallet') ? 'active' : '' }}">
+                        Prize Wallet
+                    </a>
+                @endif
+
                 {{-- Logout --}}
                 <form action="{{ route('logout') }}"
                       method="POST"
@@ -274,6 +287,64 @@
             @endguest
         </div>
     </header>
+
+    @if (request()->routeIs('home') && $exhibitionAd)
+        <aside
+            class="discover-exhibition-ad"
+            data-exhibition-ad
+            data-exhibition-ad-id="{{ $exhibitionAd['id'] }}"
+            aria-label="Online exhibition announcement"
+            hidden
+        >
+            <div class="discover-exhibition-ad-copy">
+                <span>{{ $exhibitionAd['type'] === 'ongoing' ? 'EXHIBITION IS GOING' : 'REGISTRATION OPEN' }}</span>
+                <p>
+                    {{ $exhibitionAd['type'] === 'ongoing' ? 'Explore the exhibition:' : 'Coming soon:' }}
+                    <strong>{{ $exhibitionAd['title'] }}</strong>
+                </p>
+            </div>
+            <a href="{{ route('exhibitions.show', $exhibitionAd['slug']) }}">
+                {{ $exhibitionAd['type'] === 'ongoing' ? 'Visit exhibition' : 'View exhibition' }}
+                <span aria-hidden="true">→</span>
+            </a>
+            <button type="button" data-dismiss-exhibition-ad aria-label="Close exhibition announcement">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </aside>
+        <style>
+            .discover-exhibition-ad{position:relative;display:flex;align-items:center;justify-content:center;gap:24px;padding:12px 56px;background:#414c2c;color:#fff}
+            .discover-exhibition-ad[hidden]{display:none}
+            .discover-exhibition-ad-copy>span{font-size:.7rem;font-weight:700;letter-spacing:.12em;opacity:.8}
+            .discover-exhibition-ad p{margin:3px 0 0}
+            .discover-exhibition-ad>a{color:#fff;font-weight:700;text-decoration:underline;text-underline-offset:3px}
+            .discover-exhibition-ad>button{position:absolute;top:50%;right:16px;display:grid;width:32px;height:32px;place-items:center;transform:translateY(-50%);border:1px solid rgba(255,255,255,.55);border-radius:50%;background:transparent;color:inherit;font-size:1.35rem;line-height:1;cursor:pointer}
+            .discover-exhibition-ad>button:focus-visible,.discover-exhibition-ad>a:focus-visible{outline:2px solid #fff;outline-offset:3px}
+            @media(max-width:600px){.discover-exhibition-ad{align-items:flex-start;flex-direction:column;gap:8px;padding:12px 54px 12px 16px}.discover-exhibition-ad>button{right:12px}}
+        </style>
+        <script>
+            (() => {
+                const banner = document.querySelector('[data-exhibition-ad]');
+                if (!banner) return;
+
+                const storageKey = `artfy-dismissed-exhibition-${banner.dataset.exhibitionAdId}`;
+                try {
+                    if (sessionStorage.getItem(storageKey) === '1') return;
+                } catch (error) {
+                    banner.hidden = false;
+                }
+
+                banner.hidden = false;
+                banner.querySelector('[data-dismiss-exhibition-ad]').addEventListener('click', () => {
+                    try {
+                        sessionStorage.setItem(storageKey, '1');
+                    } catch (error) {
+                        // Keep the close button functional when browser storage is unavailable.
+                    }
+                    banner.hidden = true;
+                });
+            })();
+        </script>
+    @endif
 
     {{-- ================= MAIN CONTENT ================= --}}
     <main>
@@ -325,7 +396,13 @@
             <a href="{{ route('artworks.index') }}">Explore art</a>
             <a href="{{ route('artists.index') }}">Discover artists</a>
             <a href="{{ route('exhibitions.index') }}">Exhibitions</a>
-            <a href="{{ route('favorites.index') }}">Favorites</a>
+            @auth
+                @if (auth()->user()->isArtLover())
+                    <a href="{{ route('favorites.index') }}">Favorites</a>
+                @endif
+            @else
+                <a href="{{ route('login') }}">Favorites</a>
+            @endauth
 
             @auth
                 {{-- Purchases are visible to Art Lovers only --}}
@@ -451,6 +528,30 @@
                         </span>
                     </div>
                 </a>
+
+                {{-- Co-admin: login only --}}
+                <a class="auth-role-card admin-role-card"
+                   id="coAdminAuthLink"
+                   href="{{ route('login', ['role' => 'co_admin']) }}"
+                   hidden>
+
+                    <div class="auth-role-art admin-role-art">
+                        <span>04</span>
+                        <span class="auth-role-symbol" aria-hidden="true">◇</span>
+                    </div>
+
+                    <div class="auth-role-info">
+                        <span class="auth-role-kicker">EXHIBITION JUDGING</span>
+                        <h3>I'm a Co-admin</h3>
+                        <p>
+                            Review exhibition artwork and score participants
+                            during the visiting period.
+                        </p>
+                        <span class="auth-role-link" id="coAdminAuthAction">
+                            Login as Co-admin <span aria-hidden="true">→</span>
+                        </span>
+                    </div>
+                </a>
             </div>
 
             <p class="auth-modal-note">
@@ -475,10 +576,12 @@
             const artistLink = document.getElementById('artistAuthLink');
             const loverLink = document.getElementById('loverAuthLink');
             const adminLink = document.getElementById('adminAuthLink');
+            const coAdminLink = document.getElementById('coAdminAuthLink');
 
             const artistAction = document.getElementById('artistAuthAction');
             const loverAction = document.getElementById('loverAuthAction');
             const adminAction = document.getElementById('adminAuthAction');
+            const coAdminAction = document.getElementById('coAdminAuthAction');
 
             let previousFocus = null;
 
@@ -486,7 +589,8 @@
                 login: {
                     artist: @json(route('login', ['role' => 'artist'])),
                     art_lover: @json(route('login', ['role' => 'art_lover'])),
-                    admin: @json(route('login', ['role' => 'admin']))
+                    admin: @json(route('login', ['role' => 'admin'])),
+                    co_admin: @json(route('login', ['role' => 'co_admin']))
                 },
                 register: {
                     artist: @json(route('register', ['role' => 'artist'])),
@@ -516,9 +620,11 @@
                 loverLink.href = urls[page].art_lover;
 
                 adminLink.hidden = isRegister;
+                coAdminLink.hidden = isRegister;
 
                 if (!isRegister) {
                     adminLink.href = urls.login.admin;
+                    coAdminLink.href = urls.login.co_admin;
                 }
 
                 setActionLabel(
@@ -532,6 +638,7 @@
                 );
 
                 setActionLabel(adminAction, 'Login as Admin');
+                setActionLabel(coAdminAction, 'Login as Co-admin');
 
                 modal.inert = false;
                 modal.setAttribute('aria-hidden', 'false');

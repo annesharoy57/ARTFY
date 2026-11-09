@@ -19,6 +19,11 @@
         <strong>৳{{ number_format((float) $totalExhibitionIncome, 2) }}</strong>
         <small>Calculated from confirmed SSLCOMMERZ payments.</small>
     </section>
+    <section class="exhibition-income-total artfy-commission-total">
+        <span>Artfy commission by Exhibition</span>
+        <strong>৳{{ number_format((float) $totalArtfyExhibitionCommission, 2) }}</strong>
+        <small>20% commission recorded from finalized exhibitions.</small>
+    </section>
 
     <div class="exhibition-admin-list">
         @forelse ($exhibitions as $exhibition)
@@ -35,10 +40,24 @@
                         · Fee ৳{{ number_format((float) $exhibition->registration_fee, 2) }}
                     </p>
                     <p>Verified exhibition income: <strong>৳{{ number_format((float) ($exhibition->income_total ?? 0), 2) }}</strong></p>
+                    @if ($exhibition->settlement)
+                        <p>
+                            Artfy commission: <strong>৳{{ number_format((float) $exhibition->settlement->admin_fund_amount, 2) }}</strong>
+                            · Artist prizes credited: <strong>৳{{ number_format((float) ($exhibition->prize_credits_total ?? 0), 2) }}</strong>
+                            @if ((float) $exhibition->settlement->unallocated_prize_amount > 0)
+                                · Unallocated prize: ৳{{ number_format((float) $exhibition->settlement->unallocated_prize_amount, 2) }}
+                            @endif
+                        </p>
+                    @else
+                        <p>
+                            Expected Artfy commission (20%): <strong>৳{{ number_format((float) ($exhibition->income_total ?? 0) * 0.20, 2) }}</strong>
+                            · <strong>Awards not finalized yet; prizes and commission are not credited.</strong>
+                        </p>
+                    @endif
                 </div>
                 <div class="exhibition-admin-actions">
                     <a href="{{ route('admin.exhibitions.edit', $exhibition) }}">Edit</a>
-                    <a href="{{ route('admin.exhibitions.applications', $exhibition) }}">Applications &amp; income</a>
+                    <a href="{{ route('admin.exhibitions.applications', $exhibition) }}">Applications, commission &amp; awards</a>
                     @if ($exhibition->status === 'published')
                         <a href="{{ route('exhibitions.show', $exhibition->slug) }}" target="_blank" rel="noopener">View exhibition</a>
                     @endif
@@ -56,6 +75,7 @@
         .exhibition-income-total{display:grid;gap:7px;max-width:380px;margin-top:20px;padding:20px;border:1px solid var(--border);border-radius:12px;background:#fff}
         .exhibition-income-total span,.exhibition-income-total small{color:var(--muted)}
         .exhibition-income-total strong{font-size:28px}
+        .artfy-commission-total{margin-top:14px}
         .exhibition-admin-list{display:grid;gap:14px;margin-top:22px}
         .exhibition-admin-card{display:flex;justify-content:space-between;gap:22px;padding:20px;border:1px solid var(--border);border-radius:12px;background:#fff}
         .exhibition-admin-card h2{margin:8px 0}.exhibition-admin-card p{color:var(--muted)}

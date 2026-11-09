@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Exhibition;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -68,6 +70,33 @@ class ArtfyNavigationTest extends TestCase
 
         $response->assertOk()
             ->assertSee('Artfy');
+    }
+
+    public function test_favorites_is_visible_in_navigation_for_art_lovers(): void
+    {
+        $lover = User::factory()->create([
+            'role' => 'art_lover',
+        ]);
+
+        $this->actingAs($lover)
+            ->get(route('favorites.index'))
+            ->assertOk()
+            ->assertSee(route('favorites.index'), false)
+            ->assertSee('Favorites');
+    }
+
+    public function test_login_role_dashboard_offers_a_co_admin_sign_in_option(): void
+    {
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('id="coAdminAuthLink"', false)
+            ->assertSee(route('login', ['role' => 'co_admin']), false)
+            ->assertSee('Login as Co-admin');
+
+        $this->get(route('login', ['role' => 'co_admin']))
+            ->assertOk()
+            ->assertSee('Exhibition Co-admin')
+            ->assertSee('selected', false);
     }
 
     /**
@@ -161,5 +190,77 @@ class ArtfyNavigationTest extends TestCase
             ->assertSee(route('artworks.index'), false)
             ->assertSee(route('artists.index'), false)
             ->assertSee(route('exhibitions.index'), false);
+    }
+
+    public function test_discover_shows_one_ongoing_exhibition_ad_and_prefers_it(): void
+    {
+        $now = now('Asia/Dhaka');
+        $this->createExhibition('Upcoming exhibition', [
+            'registration_opens_at' => $now->copy()->subDay(),
+            'registration_closes_at' => $now->copy()->addDay(),
+            'starts_at' => $now->copy()->addDays(2),
+            'ends_at' => $now->copy()->addDays(5),
+        ]);
+        $ongoing = $this->createExhibition('Ongoing exhibition', [
+            'registration_opens_at' => $now->copy()->subDays(5),
+            'registration_closes_at' => $now->copy()->subDays(3),
+            'starts_at' => $now->copy()->subDay(),
+            'ends_at' => $now->copy()->addDay(),
+        ]);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('EXHIBITION IS GOING')
+            ->assertSee('Ongoing exhibition')
+            ->assertSee(route('exhibitions.show', $ongoing), false)
+            ->assertSee('aria-label="Close exhibition announcement"', false)
+            ->assertDontSee('REGISTRATION OPEN')
+            ->assertDontSee('Upcoming exhibition');
+    }
+
+    public function test_discover_shows_upcoming_ad_only_while_registration_is_open(): void
+    {
+        $now = now('Asia/Dhaka');
+        $upcoming = $this->createExhibition('Registration open exhibition', [
+            'registration_opens_at' => $now->copy()->subDay(),
+            'registration_closes_at' => $now->copy()->addDay(),
+            'starts_at' => $now->copy()->addDays(2),
+            'ends_at' => $now->copy()->addDays(5),
+        ]);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('REGISTRATION OPEN')
+            ->assertSee('Coming soon:')
+            ->assertSee('Registration open exhibition')
+            ->assertSee(route('exhibitions.show', $upcoming), false);
+
+        $upcoming->update([
+            'registration_closes_at' => $now->copy()->subMinute(),
+        ]);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertDontSee('data-exhibition-ad-id="'.$upcoming->id.'"', false);
+
+        $this->get('/artworks')
+            ->assertOk()
+            ->assertDontSee('data-exhibition-ad');
+    }
+
+    private function createExhibition(string $title, array $dates): Exhibition
+    {
+        return Exhibition::create(array_merge([
+            'title' => $title,
+            'slug' => str()->slug($title),
+            'description' => $title.' details.',
+            'registration_opens_at' => now()->subDay(),
+            'registration_closes_at' => now()->addDay(),
+            'starts_at' => now()->addDays(2),
+            'ends_at' => now()->addDays(5),
+            'max_artists' => 10,
+            'registration_fee' => 100,
+            'status' => 'published',
+        ], $dates));
     }
 }

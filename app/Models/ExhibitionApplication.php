@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ExhibitionApplication extends Model
 {
@@ -44,6 +45,21 @@ class ExhibitionApplication extends Model
     public function artist(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function votes(): HasMany
+    {
+        return $this->hasMany(ExhibitionVote::class);
+    }
+
+    public function scores(): HasMany
+    {
+        return $this->hasMany(ExhibitionScore::class);
+    }
+
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
     }
 
     public function scopeActivePaymentReservation(Builder $query): Builder

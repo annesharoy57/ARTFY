@@ -57,6 +57,16 @@
         </div>
     </section>
 
+    <section class="exhibition-visit-status">
+        @if ($visitOpen)
+            <strong>Exhibition is open for visits, voting, judging, and artwork purchases.</strong>
+        @elseif (! $exhibition->visitHasStarted())
+            <strong>Voting and judging open when the exhibition begins.</strong>
+        @else
+            <strong>The exhibition is closed for visits, voting, judging, and artwork purchases.</strong>
+        @endif
+    </section>
+
     @unless ($adminPreview)
     @auth
         @if (auth()->user()->role === 'artist')
@@ -224,6 +234,40 @@
                 <h4>{{ $application->artwork_title }}</h4>
                 <p>{{ $application->artwork_description }}</p>
                 <p class="exhibition-artwork-price">Asking price: ৳{{ number_format((float) $application->artwork_price, 2) }}</p>
+                @if ($resultsVisible)
+                    <p class="exhibition-result">
+                        Place: <strong>{{ $application->rank }}</strong>
+                        · Total points: <strong>{{ $application->total_points }}</strong>
+                        ({{ $application->votes_count }} vote(s) + {{ (int) ($application->scores_sum_score ?? 0) }} co-admin point(s))
+                    </p>
+                @endif
+
+                @if (auth()->check() && auth()->user()->isArtLover())
+                    <div class="exhibition-art-actions">
+                        @if ($visitOpen)
+                            @if ($application->voted_by_viewer)
+                                <span class="exhibition-voted">Your vote is recorded</span>
+                            @else
+                                <form method="POST" action="{{ route('exhibitions.vote', [$exhibition, $application]) }}">
+                                    @csrf
+                                    <button class="exhibition-button" type="submit">Vote for this artwork</button>
+                                </form>
+                            @endif
+                        @endif
+
+                        @if ($application->sold)
+                            <span class="exhibition-sold">Sold</span>
+                        @elseif (! $resultsVisible && (float) $application->artwork_price > 0)
+                            <a class="exhibition-button" href="{{ route('artworks.purchase.create', ['slug' => 'exhibition-' . $application->id]) }}">
+                                Buy this artwork
+                            </a>
+                        @endif
+                    </div>
+                @elseif (! auth()->check() && ! $resultsVisible && (float) $application->artwork_price > 0 && ! $application->sold)
+                    <a class="exhibition-button" href="{{ route('login', ['role' => 'art_lover']) }}">Log in as an art lover to buy</a>
+                @elseif ($application->sold)
+                    <span class="exhibition-sold">Sold</span>
+                @endif
             </article>
         @empty
             <p>Participating artists will appear here after their registration payment is confirmed.</p>
@@ -249,6 +293,10 @@
     .exhibition-artists{margin-top:52px}
     .exhibition-artists h2{font:600 2rem var(--serif)}
     .exhibition-artist{margin:16px 0}
+    .exhibition-visit-status{margin:18px 0;padding:14px 18px;border:1px solid #e5e2d6;border-radius:10px;background:#fff}
+    .exhibition-art-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px}
+    .exhibition-art-actions form{margin:0}.exhibition-voted{color:#285b31;font-weight:700}.exhibition-sold{color:#922f32;font-weight:700}
+    .exhibition-result{padding:10px 12px;border-radius:8px;background:#f3f1e9}
     .exhibition-artwork-form{display:grid;gap:14px;max-width:680px;margin-top:18px}
     .exhibition-artwork-form label{display:grid;gap:7px;font-weight:600}
     .exhibition-artwork-form input,.exhibition-artwork-form textarea{width:100%;padding:11px;border:1px solid #e5e2d6;border-radius:7px;background:#fff;font:inherit}

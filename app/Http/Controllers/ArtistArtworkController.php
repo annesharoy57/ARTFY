@@ -117,6 +117,7 @@ class ArtistArtworkController extends Controller
         }
 
         $artworks = Artwork::where('user_id', auth()->id())
+            ->withCount(['likes', 'comments'])
             ->latest()
             ->get();
 

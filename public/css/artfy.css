@@ -2957,6 +2957,23 @@ body.auth-modal-open {
     min-width: 0;
 }
 
+.artwork-save-icon {
+    display: block;
+    width: 19px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.8;
+}
+
+.ag-save-button[aria-pressed="true"] .artwork-save-icon,
+.artfy-carousel-save-button[aria-pressed="true"] .artwork-save-icon,
+.favorite-button[aria-pressed="true"] .artwork-save-icon {
+    fill: currentColor;
+}
+
 .site-header .main-nav a {
     position: relative;
     display: inline-flex;

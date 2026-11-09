@@ -24,6 +24,7 @@ class GalleryController extends Controller
             ),
             'artists' => $this->artistCollection(),
             'exhibitions' => $this->exhibitionCollection(),
+            'exhibitionAd' => $this->discoverExhibitionAd(),
         ]);
     }
 
@@ -182,6 +183,31 @@ class GalleryController extends Controller
     }
 
     /**
+     * Show the signed-in art lover's saved artworks.
+     */
+    public function favorites(): View
+    {
+        $artworks = array_values(array_filter(
+            $this->publicArtworkCollection(includeSold: true),
+            fn (array $artwork): bool => $artwork['is_saved']
+        ));
+
+        return view('artfy.listing', [
+            'title' => 'Your favorites',
+            'eyebrow' => 'A personal collection',
+            'description' => 'The artworks you have saved, all in one place.',
+            'pageType' => 'artworks',
+            'items' => $artworks,
+            'query' => '',
+            'artworkFormat' => '',
+            'mediumFilter' => '',
+            'artType' => '',
+            'maxPrice' => '',
+            'sort' => 'latest',
+        ]);
+    }
+
+    /**
      * Match the selected artistic medium against the saved category
      * and medium. Format filtering is handled separately.
      */
@@ -316,6 +342,7 @@ class GalleryController extends Controller
         }
 
         $uploadedArtwork = Artwork::with('artist.artistProfile')
+            ->withCount('likes')
             ->whereIn('status', ['available', 'sold'])
             ->where('moderation_status', 'approved')
             ->find((int) $matches[1]);
@@ -324,6 +351,36 @@ class GalleryController extends Controller
 
         $artist = $uploadedArtwork->artist;
         $profile = $artist?->artistProfile;
+        $canManage = auth()->check()
+            && (int) auth()->id() === (int) $uploadedArtwork->user_id
+            && auth()->user()->isArtist();
+        $viewerId = auth()->id();
+        $comments = $uploadedArtwork->comments()
+            ->whereNull('parent_id')
+            ->with([
+                'user',
+                'replies' => fn ($query) => $query
+                    ->with('user')
+                    ->withCount('likes')
+                    ->withExists([
+                        'likes as liked_by_viewer' => fn ($likes) => $likes
+                            ->where('user_id', $viewerId),
+                    ])
+                    ->oldest(),
+            ])
+            ->withCount('likes')
+            ->withExists([
+                'likes as liked_by_viewer' => fn ($query) => $query
+                    ->where('user_id', $viewerId),
+            ])
+            ->latest()
+            ->get();
+        $likeUsers = $canManage
+            ? $uploadedArtwork->likes()
+                ->select('users.id', 'users.name')
+                ->latest('artwork_likes.created_at')
+                ->get()
+            : collect();
 
         $artwork = [
             'id' => $uploadedArtwork->id,
@@ -339,15 +396,23 @@ class GalleryController extends Controller
             'category' => $uploadedArtwork->category ?: 'Other',
             'type' => $uploadedArtwork->medium ?: 'Not specified',
             'price' => $uploadedArtwork->price,
-            'likes' => 0,
+            'likes' => $uploadedArtwork->likes_count,
             'color' => 'green',
             'image' => $uploadedArtwork->image,
             'is_uploaded' => true,
             'status' => $uploadedArtwork->status,
             'is_sold' => $uploadedArtwork->status === 'sold',
-            'can_manage' => auth()->check()
-                && (int) auth()->id() === (int) $uploadedArtwork->user_id
-                && auth()->user()->isArtist(),
+            'can_manage' => $canManage,
+            'is_liked' => auth()->check()
+                && auth()->user()->isArtLover()
+                && auth()->user()->likedArtworks()
+                    ->whereKey($uploadedArtwork->id)
+                    ->exists(),
+            'is_saved' => auth()->check()
+                && auth()->user()->isArtLover()
+                && auth()->user()->savedArtworks()
+                    ->whereKey($uploadedArtwork->id)
+                    ->exists(),
         ];
 
         return view('artfy.detail', [
@@ -356,6 +421,8 @@ class GalleryController extends Controller
             'description' => $artwork['description'],
             'item' => $artwork,
             'pageType' => 'artwork',
+            'comments' => $comments,
+            'likeUsers' => $likeUsers,
         ]);
     }
 
@@ -406,17 +473,62 @@ class GalleryController extends Controller
      */
     public function exhibition(string $slug): View
     {
+        app(\App\Services\ExhibitionAwardService::class)
+            ->settleAllClosedExhibitions();
+
         $exhibition = Exhibition::query()
             ->where('status', 'published')
             ->with([
                 'applications' => fn ($query) => $query
                     ->where('status', 'confirmed')
-                    ->with([
-                        'artist.artistProfile',
+                    ->with(['artist.artistProfile'])
+                    ->withCount('votes')
+                    ->withSum('scores', 'score')
+                    ->withExists([
+                        'votes as voted_by_viewer' => fn ($votes) => $votes
+                            ->where('user_id', auth()->id() ?? 0),
+                    ])
+                    ->withExists([
+                        'orders as sold' => fn ($orders) => $orders
+                            ->where('payment_status', 'verified'),
                     ]),
             ])
             ->where('slug', $slug)
             ->firstOrFail();
+
+        $visitOpen = $exhibition->visitIsOpen();
+        $resultsVisible = $exhibition->visitHasEnded();
+        $applications = $exhibition->applications;
+
+        if ($resultsVisible) {
+            $applications = $applications
+                ->map(function ($application): object {
+                    $application->total_points = (int) $application->votes_count
+                        + (int) ($application->scores_sum_score ?? 0);
+
+                    return $application;
+                })
+                ->sort(function ($left, $right): int {
+                    $pointsOrder = $right->total_points <=> $left->total_points;
+
+                    return $pointsOrder !== 0
+                        ? $pointsOrder
+                        : $left->id <=> $right->id;
+                })
+                ->values();
+
+            $rank = 0;
+            $previousPoints = null;
+            foreach ($applications as $index => $application) {
+                if ($previousPoints !== $application->total_points) {
+                    $rank = $index + 1;
+                    $previousPoints = $application->total_points;
+                }
+                $application->rank = $rank;
+            }
+
+            $exhibition->setRelation('applications', $applications);
+        }
 
         $reservedCount = $exhibition->applications()
             ->reservesArtistPlace()
@@ -446,21 +558,38 @@ class GalleryController extends Controller
             'pendingPaymentCount',
             'existingApplication',
             'registrationOpen',
-            'registrationWindowOpen'
+            'registrationWindowOpen',
+            'visitOpen',
+            'resultsVisible'
         ));
     }
 
     /**
      * Return available, admin-approved artworks for Discover and listings.
      */
-    private function publicArtworkCollection(): array
+    private function publicArtworkCollection(bool $includeSold = false): array
     {
+        $viewer = auth()->user();
+        $likedArtworkIds = $viewer?->isArtLover()
+            ? $viewer->likedArtworks()->pluck('artworks.id')->flip()
+            : collect();
+        $savedArtworkIds = $viewer?->isArtLover()
+            ? $viewer->savedArtworks()->pluck('artworks.id')->flip()
+            : collect();
+
         return Artwork::with('artist.artistProfile')
-            ->where('status', 'available')
+            ->withCount('likes')
+            ->whereIn(
+                'status',
+                $includeSold ? ['available', 'sold'] : ['available']
+            )
             ->where('moderation_status', 'approved')
             ->latest()
             ->get()
-            ->map(function (Artwork $artwork): array {
+            ->map(function (Artwork $artwork) use (
+                $likedArtworkIds,
+                $savedArtworkIds
+            ): array {
                 $artist = $artwork->artist;
                 $profile = $artist?->artistProfile;
 
@@ -477,7 +606,9 @@ class GalleryController extends Controller
                     'type' => $artwork->medium ?: 'Not specified',
                     'artwork_type' => $artwork->artwork_type ?: 'physical',
                     'price' => $artwork->price,
-                    'likes' => 0,
+                    'likes' => $artwork->likes_count,
+                    'is_liked' => $likedArtworkIds->has($artwork->id),
+                    'is_saved' => $savedArtworkIds->has($artwork->id),
                     'color' => 'green',
                     'description' => $artwork->description
                         ?: 'Explore this original artwork on Artfy.',
@@ -551,5 +682,42 @@ class GalleryController extends Controller
                 'color' => 'green',
             ])
             ->all();
+    }
+
+    private function discoverExhibitionAd(): ?array
+    {
+        $exhibitions = Exhibition::query()
+            ->where('status', 'published')
+            ->withCount([
+                'applications as reserved_artists_count' => fn ($query) => $query
+                    ->reservesArtistPlace(),
+            ])
+            ->orderBy('starts_at')
+            ->get();
+
+        $exhibition = $exhibitions->first(
+            fn (Exhibition $item): bool => $item->visitIsOpen()
+        );
+        $type = 'ongoing';
+
+        if (! $exhibition) {
+            $exhibition = $exhibitions->first(
+                fn (Exhibition $item): bool => ! $item->visitHasStarted()
+                    && $item->registrationIsOpen()
+                    && $item->reserved_artists_count < $item->max_artists
+            );
+            $type = 'upcoming';
+        }
+
+        if (! $exhibition) {
+            return null;
+        }
+
+        return [
+            'id' => $exhibition->id,
+            'slug' => $exhibition->slug,
+            'title' => $exhibition->title,
+            'type' => $type,
+        ];
     }
 }

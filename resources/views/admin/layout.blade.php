@@ -533,6 +533,13 @@
             </a>
 
             <a
+                href="{{ route('admin.co-admins.index') }}"
+                class="nav-link {{ request()->routeIs('admin.co-admins.*') ? 'active' : '' }}"
+            >
+                ♙ &nbsp; Exhibition Co-admins
+            </a>
+
+            <a
                 href="{{ route('admin.memberships.index') }}"
                 class="nav-link {{ request()->routeIs('admin.memberships.*') ? 'active' : '' }}"
             >

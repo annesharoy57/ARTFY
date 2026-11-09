@@ -41,6 +41,10 @@
                 <p style="color: #72795f; margin-top: 12px;">
                     The digital file is not currently available. Please contact the administrator.
                 </p>
+            @elseif ($order->exhibition_application_id)
+                <p style="color: #72795f; margin-top: 12px;">
+                    Exhibition artwork purchase. Delivery and artist payout follow the standard order process.
+                </p>
             @else
                 <p style="color: #72795f; margin-top: 12px;">
                     This is not a digital artwork download.
