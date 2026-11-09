@@ -434,6 +434,7 @@
     }
 
     .art-gallery .ag-art-card {
+        position: relative;
         display: flex;
         flex-direction: column;
         min-width: 0;
@@ -450,6 +451,60 @@
         transform: translateY(-3px);
         border-color: #c7ceb7;
         box-shadow: 0 10px 22px rgba(48, 58, 37, .09);
+    }
+
+    .art-gallery .ag-art-card-link {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        min-width: 0;
+        color: inherit;
+        text-decoration: none;
+    }
+
+    .ag-card-save {
+        position: absolute;
+        z-index: 2;
+        top: 10px;
+        right: 10px;
+    }
+
+    .ag-save-button {
+        display: grid;
+        width: 38px;
+        height: 38px;
+        place-items: center;
+        border: 1px solid rgba(48, 58, 37, .16);
+        border-radius: 50%;
+        background: rgba(255, 254, 249, .96);
+        color: #414c2c;
+        cursor: pointer;
+    }
+
+    .ag-save-button[aria-pressed="true"] {
+        color: #b7473d;
+    }
+
+    .artwork-save-icon {
+        display: block;
+        width: 19px;
+        height: 22px;
+        fill: none;
+        stroke: currentColor;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 1.8;
+    }
+
+    .ag-save-button[aria-pressed="true"] .artwork-save-icon,
+    .artfy-carousel-save-button[aria-pressed="true"] .artwork-save-icon {
+        fill: currentColor;
+    }
+
+    .ag-save-button:focus-visible,
+    .ag-card-save:focus-visible {
+        outline: 2px solid #55613a;
+        outline-offset: 3px;
     }
 
     .ag-art-image {
@@ -1205,10 +1260,11 @@
                         $cardImage = $resolveArtfyImage($item['image'] ?? null);
                     @endphp
 
-                    <a
-                        class="ag-art-card"
-                        href="{{ route('artworks.show', $item['slug']) }}"
-                    >
+                    <article class="ag-art-card">
+                        <a
+                            class="ag-art-card-link"
+                            href="{{ route('artworks.show', $item['slug']) }}"
+                        >
                         <div class="ag-art-image">
                             @if ($cardImage)
                                 <img
@@ -1250,7 +1306,41 @@
                                 <span class="ag-view">View ↗</span>
                             </div>
                         </div>
-                    </a>
+                        </a>
+
+                        @auth
+                            @if (auth()->user()->isArtLover())
+                                <form
+                                    class="ag-card-save"
+                                    action="{{ route('artworks.favorite', $item['id']) }}"
+                                    method="POST"
+                                >
+                                    @csrf
+                                    <input type="hidden" name="return_to" value="{{ request()->getRequestUri() }}">
+                                    <button
+                                        class="ag-save-button"
+                                        type="submit"
+                                        aria-label="{{ $item['is_saved'] ? 'Remove from favorites' : 'Save to favorites' }}"
+                                        aria-pressed="{{ $item['is_saved'] ? 'true' : 'false' }}"
+                                    >
+                                        <svg class="artwork-save-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M6 4.5A2.5 2.5 0 0 1 8.5 2h7A2.5 2.5 0 0 1 18 4.5V22l-6-4-6 4V4.5Z"/>
+                                        </svg>
+                                    </button>
+                                </form>
+                            @endif
+                        @else
+                            <a
+                                class="ag-card-save ag-save-button"
+                                href="{{ route('login', ['redirect' => url()->current()]) }}"
+                                aria-label="Log in to save to favorites"
+                            >
+                                <svg class="artwork-save-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M6 4.5A2.5 2.5 0 0 1 8.5 2h7A2.5 2.5 0 0 1 18 4.5V22l-6-4-6 4V4.5Z"/>
+                                </svg>
+                            </a>
+                        @endauth
+                    </article>
                 @endforeach
             </div>
 

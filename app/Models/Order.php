@@ -15,6 +15,7 @@ class Order extends Model
         'order_number',
         'buyer_id',
         'artwork_id',
+        'exhibition_application_id',
         'artist_id',
         'artwork_title',
 
@@ -99,6 +100,14 @@ class Order extends Model
     public function artwork(): BelongsTo
     {
         return $this->belongsTo(Artwork::class, 'artwork_id');
+    }
+
+    public function exhibitionApplication(): BelongsTo
+    {
+        return $this->belongsTo(
+            ExhibitionApplication::class,
+            'exhibition_application_id'
+        );
     }
 
     /**

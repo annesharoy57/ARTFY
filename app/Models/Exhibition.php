@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
 class Exhibition extends Model
@@ -39,6 +40,16 @@ class Exhibition extends Model
         return $this->hasMany(ExhibitionApplication::class);
     }
 
+    public function settlement(): HasOne
+    {
+        return $this->hasOne(ExhibitionSettlement::class);
+    }
+
+    public function walletTransactions(): HasMany
+    {
+        return $this->hasMany(ArtistWalletTransaction::class);
+    }
+
     public function registrationIsOpen(): bool
     {
         $opensAt = Carbon::createFromFormat(
@@ -55,6 +66,45 @@ class Exhibition extends Model
 
         return $now->greaterThanOrEqualTo($opensAt)
             && $now->lessThanOrEqualTo($closesAt);
+    }
+
+    public function visitIsOpen(): bool
+    {
+        $now = Carbon::now('Asia/Dhaka');
+
+        return $this->status === 'published'
+            && $now->greaterThanOrEqualTo($this->visitStartsAt())
+            && $now->lessThanOrEqualTo($this->visitEndsAt());
+    }
+
+    public function visitHasStarted(): bool
+    {
+        return Carbon::now('Asia/Dhaka')
+            ->greaterThanOrEqualTo($this->visitStartsAt());
+    }
+
+    public function visitHasEnded(): bool
+    {
+        return Carbon::now('Asia/Dhaka')
+            ->greaterThan($this->visitEndsAt());
+    }
+
+    private function visitStartsAt(): Carbon
+    {
+        return Carbon::createFromFormat(
+            'Y-m-d H:i:s',
+            $this->starts_at->format('Y-m-d H:i:s'),
+            'Asia/Dhaka'
+        );
+    }
+
+    private function visitEndsAt(): Carbon
+    {
+        return Carbon::createFromFormat(
+            'Y-m-d H:i:s',
+            $this->ends_at->format('Y-m-d H:i:s'),
+            'Asia/Dhaka'
+        );
     }
 
     public function getRouteKeyName(): string

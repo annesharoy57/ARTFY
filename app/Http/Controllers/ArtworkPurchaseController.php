@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Artwork;
+use App\Models\Exhibition;
+use App\Models\ExhibitionApplication;
 use App\Models\Order;
 use App\Models\User;
 use App\Services\DeliveryService;
@@ -26,15 +28,57 @@ class ArtworkPurchaseController extends Controller
     public function create(string $slug): View
     {
         abort_unless(
-            preg_match('/^uploaded-(\d+)$/', $slug, $matches),
-            404
+            auth()->check() && auth()->user()->isArtLover(),
+            403,
+            'Only art lovers can purchase artworks.'
         );
 
-        $artwork = Artwork::with('artist.artistProfile')
-            ->where('status', 'available')
-            ->where('moderation_status', 'approved')
-            ->where('is_sold', false)
-            ->findOrFail((int) $matches[1]);
+        $exhibition = null;
+        $isExhibitionArtwork = preg_match('/^exhibition-(\d+)$/', $slug, $matches) === 1;
+
+        if ($isExhibitionArtwork) {
+            $application = ExhibitionApplication::query()
+                ->with(['artist.artistProfile', 'exhibition'])
+                ->where('status', 'confirmed')
+                ->where('payment_status', 'verified')
+                ->findOrFail((int) $matches[1]);
+            $exhibition = $application->exhibition;
+
+            abort_unless($exhibition->status === 'published', 404);
+            abort_if(
+                $exhibition->visitHasEnded(),
+                404,
+                'This exhibition artwork is no longer available for purchase.'
+            );
+            abort_if(
+                $application->orders()
+                    ->where('payment_status', 'verified')
+                    ->exists(),
+                404,
+                'This exhibition artwork has already been sold.'
+            );
+
+            $artwork = new Artwork([
+                'title' => $application->artwork_title,
+                'image' => $application->artwork_image,
+                'price' => $application->artwork_price,
+                'user_id' => $application->user_id,
+                'artwork_type' => 'physical',
+            ]);
+            $artwork->id = $application->id;
+            $artwork->setRelation('artist', $application->artist);
+        } else {
+            abort_unless(
+                preg_match('/^uploaded-(\d+)$/', $slug, $matches),
+                404
+            );
+
+            $artwork = Artwork::with('artist.artistProfile')
+                ->where('status', 'available')
+                ->where('moderation_status', 'approved')
+                ->where('is_sold', false)
+                ->findOrFail((int) $matches[1]);
+        }
 
         abort_if(
             $artwork->price === null || (float) $artwork->price <= 0,
@@ -50,6 +94,9 @@ class ArtworkPurchaseController extends Controller
 
         return view('artfy.purchase', [
             'artwork' => $artwork,
+            'purchaseSlug' => $slug,
+            'isExhibitionArtwork' => $isExhibitionArtwork,
+            'exhibition' => $exhibition,
             'artistName' => $artwork->artist?->artistProfile?->artist_name
                 ?: ($artwork->artist?->name ?? 'Artfy Artist'),
         ]);
@@ -116,12 +163,28 @@ class ArtworkPurchaseController extends Controller
             'Only art lovers can purchase artworks.'
         );
 
-        abort_unless(
-            preg_match('/^uploaded-(\d+)$/', $slug, $matches),
-            404
-        );
+        $exhibitionApplicationId = null;
+        $isExhibitionArtwork = preg_match('/^exhibition-(\d+)$/', $slug, $matches) === 1;
 
-        $artworkId = (int) $matches[1];
+        if ($isExhibitionArtwork) {
+            $exhibitionApplicationId = (int) $matches[1];
+            $artworkId = 0;
+            $application = ExhibitionApplication::query()
+                ->with('exhibition')
+                ->findOrFail($exhibitionApplicationId);
+
+            abort_if(
+                $application->exhibition->visitHasEnded(),
+                409,
+                'This exhibition artwork is no longer available for purchase.'
+            );
+        } else {
+            abort_unless(
+                preg_match('/^uploaded-(\d+)$/', $slug, $matches),
+                404
+            );
+            $artworkId = (int) $matches[1];
+        }
 
         /*
          * Resolve existing orders before creating another checkout.
@@ -129,7 +192,8 @@ class ArtworkPurchaseController extends Controller
          */
         $resolution = $this->resolveExistingPendingOrders(
             $artworkId,
-            $sslCommerz
+            $sslCommerz,
+            $exhibitionApplicationId
         );
 
         if (in_array($resolution, ['paid', 'already_processed'], true)) {
@@ -179,10 +243,15 @@ class ArtworkPurchaseController extends Controller
         /*
          * Artist pickup coordinates remain private.
          */
-        $deliveryArtwork = Artwork::with('artist.artistProfile')
-            ->findOrFail($artworkId);
-
-        $artistProfile = $deliveryArtwork->artist?->artistProfile;
+        if ($isExhibitionArtwork) {
+            $deliveryApplication = ExhibitionApplication::with('artist.artistProfile')
+                ->findOrFail($exhibitionApplicationId);
+            $artistProfile = $deliveryApplication->artist?->artistProfile;
+        } else {
+            $deliveryArtwork = Artwork::with('artist.artistProfile')
+                ->findOrFail($artworkId);
+            $artistProfile = $deliveryArtwork->artist?->artistProfile;
+        }
 
         if (
             !$artistProfile
@@ -251,39 +320,74 @@ class ArtworkPurchaseController extends Controller
         try {
             $order = DB::transaction(function () use (
                 $artworkId,
+                $exhibitionApplicationId,
+                $isExhibitionArtwork,
                 $shippingAddress,
                 $delivery
             ) {
-                $artwork = Artwork::whereKey($artworkId)
-                    ->lockForUpdate()
-                    ->firstOrFail();
+                if ($isExhibitionArtwork) {
+                    $application = ExhibitionApplication::query()
+                        ->whereKey($exhibitionApplicationId)
+                        ->lockForUpdate()
+                        ->firstOrFail();
+                    $exhibition = Exhibition::query()
+                        ->whereKey($application->exhibition_id)
+                        ->firstOrFail();
 
-                abort_unless(
-                    $artwork->status === 'available'
-                        && $artwork->moderation_status === 'approved'
-                        && !$artwork->is_sold
-                        && $artwork->price !== null
-                        && (float) $artwork->price > 0,
-                    409,
-                    'This artwork is no longer available for purchase.'
-                );
+                    abort_unless(
+                        $application->status === 'confirmed'
+                            && $application->payment_status === 'verified'
+                            && $exhibition->status === 'published'
+                            && ! $exhibition->visitHasEnded()
+                            && $application->artwork_price !== null
+                            && (float) $application->artwork_price > 0,
+                        409,
+                        'This exhibition artwork is no longer available for purchase.'
+                    );
 
-                abort_if(
-                    (int) $artwork->user_id === (int) auth()->id(),
-                    403,
-                    'You cannot purchase your own artwork.'
-                );
+                    $existingOrder = $application->orders()
+                        ->where(function ($query) {
+                            $query->where('payment_status', 'verified')
+                                ->orWhere(function ($pending) {
+                                    $pending->where('payment_status', 'pending')
+                                        ->where('order_status', 'pending');
+                                });
+                        })
+                        ->exists();
+                    $orderArtworkId = null;
+                    $artistId = $application->user_id;
+                    $title = $application->artwork_title;
+                    $price = round((float) $application->artwork_price, 2);
+                } else {
+                    $artwork = Artwork::whereKey($artworkId)
+                        ->lockForUpdate()
+                        ->firstOrFail();
 
-                /*
-                 * Preserve duplicate-checkout protection.
-                 */
-                $existingOrder = Order::where(
-                    'artwork_id',
-                    $artwork->id
-                )
-                    ->where('payment_status', 'pending')
-                    ->where('order_status', 'pending')
-                    ->exists();
+                    abort_unless(
+                        $artwork->status === 'available'
+                            && $artwork->moderation_status === 'approved'
+                            && !$artwork->is_sold
+                            && $artwork->price !== null
+                            && (float) $artwork->price > 0,
+                        409,
+                        'This artwork is no longer available for purchase.'
+                    );
+
+                    abort_if(
+                        (int) $artwork->user_id === (int) auth()->id(),
+                        403,
+                        'You cannot purchase your own artwork.'
+                    );
+
+                    $existingOrder = Order::where('artwork_id', $artwork->id)
+                        ->where('payment_status', 'pending')
+                        ->where('order_status', 'pending')
+                        ->exists();
+                    $orderArtworkId = $artwork->id;
+                    $artistId = $artwork->user_id;
+                    $title = $artwork->title;
+                    $price = round((float) $artwork->price, 2);
+                }
 
                 abort_if(
                     $existingOrder,
@@ -296,8 +400,6 @@ class ArtworkPurchaseController extends Controller
                  * Commission applies to artwork price only.
                  * Delivery is added to the buyer's total, not commission.
                  */
-                $price = round((float) $artwork->price, 2);
-
                 $deliveryFee = round(
                     (float) $delivery['delivery_fee'],
                     2
@@ -318,9 +420,10 @@ class ArtworkPurchaseController extends Controller
                     ),
 
                     'buyer_id' => auth()->id(),
-                    'artwork_id' => $artwork->id,
-                    'artist_id' => $artwork->user_id,
-                    'artwork_title' => $artwork->title,
+                    'artwork_id' => $orderArtworkId,
+                    'exhibition_application_id' => $exhibitionApplicationId,
+                    'artist_id' => $artistId,
+                    'artwork_title' => $title,
 
                     'price' => $price,
 
@@ -420,7 +523,12 @@ class ArtworkPurchaseController extends Controller
             report($e);
 
             return redirect()
-                ->route('artworks.show', 'uploaded-' . $artworkId)
+                ->route(
+                    $isExhibitionArtwork ? 'exhibitions.show' : 'artworks.show',
+                    $isExhibitionArtwork
+                        ? ExhibitionApplication::findOrFail($exhibitionApplicationId)->exhibition->slug
+                        : 'uploaded-' . $artworkId
+                )
                 ->with(
                     'error',
                     'We could not confirm the checkout session. '
@@ -439,9 +547,18 @@ class ArtworkPurchaseController extends Controller
      */
     private function resolveExistingPendingOrders(
         int $artworkId,
-        SSLCommerzService $sslCommerz
+        SSLCommerzService $sslCommerz,
+        ?int $exhibitionApplicationId = null
     ): string {
-        $orders = Order::where('artwork_id', $artworkId)
+        $orders = Order::query()
+            ->when(
+                $exhibitionApplicationId !== null,
+                fn ($query) => $query->where(
+                    'exhibition_application_id',
+                    $exhibitionApplicationId
+                ),
+                fn ($query) => $query->where('artwork_id', $artworkId)
+            )
             ->where('payment_status', 'pending')
             ->where('order_status', 'pending')
             ->orderBy('id')
@@ -963,35 +1080,69 @@ class ArtworkPurchaseController extends Controller
                 );
             }
 
-            $artwork = Artwork::whereKey($lockedOrder->artwork_id)
-                ->lockForUpdate()
-                ->firstOrFail();
+            if ($lockedOrder->exhibition_application_id !== null) {
+                $application = ExhibitionApplication::query()
+                    ->whereKey($lockedOrder->exhibition_application_id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+                $exhibition = Exhibition::findOrFail($application->exhibition_id);
+                $alreadySold = $application->orders()
+                    ->where('payment_status', 'verified')
+                    ->where('id', '!=', $lockedOrder->id)
+                    ->exists();
 
-            if (
-                $artwork->status !== 'available'
-                || $artwork->moderation_status !== 'approved'
-                || $artwork->is_sold
-            ) {
-                throw new RuntimeException(
-                    'The artwork is no longer available. '
-                    . 'Manual payment review is required for order '
-                    . $lockedOrder->order_number
-                );
+                if (
+                    $application->status !== 'confirmed'
+                    || $application->payment_status !== 'verified'
+                    || $exhibition->status !== 'published'
+                    || $alreadySold
+                ) {
+                    throw new RuntimeException(
+                        'The exhibition artwork is no longer available. '
+                        . 'Manual payment review is required for order '
+                        . $lockedOrder->order_number
+                    );
+                }
+
+                $lockedOrder->update([
+                    'payment_status' => 'verified',
+                    'transaction_id' => $lockedOrder->order_number,
+                    'gateway_val_id' => $validationId,
+                    'verified_at' => now(),
+                ]);
+
+                $this->createSaleNotifications($lockedOrder, null);
+            } else {
+                $artwork = Artwork::whereKey($lockedOrder->artwork_id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if (
+                    $artwork->status !== 'available'
+                    || $artwork->moderation_status !== 'approved'
+                    || $artwork->is_sold
+                ) {
+                    throw new RuntimeException(
+                        'The artwork is no longer available. '
+                        . 'Manual payment review is required for order '
+                        . $lockedOrder->order_number
+                    );
+                }
+
+                $lockedOrder->update([
+                    'payment_status' => 'verified',
+                    'transaction_id' => $lockedOrder->order_number,
+                    'gateway_val_id' => $validationId,
+                    'verified_at' => now(),
+                ]);
+
+                $artwork->update([
+                    'is_sold' => true,
+                    'status' => 'sold',
+                ]);
+
+                $this->createSaleNotifications($lockedOrder, $artwork);
             }
-
-            $lockedOrder->update([
-                'payment_status' => 'verified',
-                'transaction_id' => $lockedOrder->order_number,
-                'gateway_val_id' => $validationId,
-                'verified_at' => now(),
-            ]);
-
-            $artwork->update([
-                'is_sold' => true,
-                'status' => 'sold',
-            ]);
-
-            $this->createSaleNotifications($lockedOrder, $artwork);
 
             return 'paid';
         });
@@ -1002,7 +1153,7 @@ class ArtworkPurchaseController extends Controller
      */
     private function createSaleNotifications(
         Order $order,
-        Artwork $artwork
+        ?Artwork $artwork
     ): void {
         $salePrice = number_format((float) $order->price, 2);
 
@@ -1024,6 +1175,13 @@ class ArtworkPurchaseController extends Controller
         $artist = User::find($order->artist_id);
 
         if ($artist) {
+            $artworkUrl = $artwork
+                ? route('artworks.show', 'uploaded-'.$artwork->id, false)
+                : route(
+                    'exhibitions.show',
+                    $order->exhibitionApplication->exhibition->slug,
+                    false
+                );
             $this->insertDatabaseNotification(
                 $artist,
                 'artfy.artwork_sold',
@@ -1035,7 +1193,7 @@ class ArtworkPurchaseController extends Controller
                         . '. Your recorded amount: BDT '
                         . $artistAmount . '.',
 
-                    'artwork_slug' => 'uploaded-' . $artwork->id,
+                    'url' => $artworkUrl,
                     'order_number' => $order->order_number,
                     'sale_price' => (float) $order->price,
                     'commission_amount' => (float) $order->commission_amount,
@@ -1153,7 +1311,10 @@ class ArtworkPurchaseController extends Controller
      */
     public function myPurchases(): View
     {
-        $orders = Order::with('artwork')
+        $orders = Order::with([
+            'artwork',
+            'exhibitionApplication.exhibition',
+        ])
             ->where('buyer_id', auth()->id())
             ->latest()
             ->get();

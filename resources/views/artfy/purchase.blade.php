@@ -7,9 +7,11 @@
 
     <a
         class="back-link"
-        href="{{ route('artworks.show', 'uploaded-' . $artwork->id) }}"
+        href="{{ $isExhibitionArtwork
+            ? route('exhibitions.show', $exhibition)
+            : route('artworks.show', 'uploaded-' . $artwork->id) }}"
     >
-        ← Back to artwork
+        {{ $isExhibitionArtwork ? '← Back to exhibition' : '← Back to artwork' }}
     </a>
 
     <div class="detail-layout">
@@ -102,7 +104,7 @@
             <form
                 id="purchase-form"
                 method="POST"
-                action="{{ route('artworks.purchase.store', 'uploaded-' . $artwork->id) }}"
+                action="{{ route('artworks.purchase.store', $purchaseSlug) }}"
             >
                 @csrf
 
