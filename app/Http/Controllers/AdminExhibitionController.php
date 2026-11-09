@@ -4,6 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Exhibition;
 use App\Models\ExhibitionApplication;
+use App\Models\ExhibitionSettlement;
+use App\Models\ArtistWalletTransaction;
+use App\Services\ExhibitionAwardService;
+use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,11 +18,16 @@ class AdminExhibitionController extends Controller
 {
     public function index(): View
     {
+        app(ExhibitionAwardService::class)->settleAllClosedExhibitions();
+
         $totalExhibitionIncome = ExhibitionApplication::query()
             ->where('payment_status', 'verified')
             ->sum('registration_fee');
+        $totalArtfyExhibitionCommission = ExhibitionSettlement::query()
+            ->sum('admin_fund_amount');
 
         $exhibitions = Exhibition::query()
+            ->with('settlement')
             ->withCount([
                 'applications as reserved_artists_count' => fn ($query) => $query
                     ->reservesArtistPlace(),
@@ -31,12 +40,17 @@ class AdminExhibitionController extends Controller
                 'applications as income_total' => fn ($query) => $query
                     ->where('payment_status', 'verified'),
             ], 'registration_fee')
+            ->withSum([
+                'walletTransactions as prize_credits_total' => fn ($query) => $query
+                    ->where('type', 'exhibition_prize'),
+            ], 'amount')
             ->latest()
             ->paginate(12);
 
         return view('admin.exhibitions.index', compact(
             'exhibitions',
-            'totalExhibitionIncome'
+            'totalExhibitionIncome',
+            'totalArtfyExhibitionCommission'
         ));
     }
 
@@ -110,8 +124,12 @@ class AdminExhibitionController extends Controller
 
     public function applications(Exhibition $exhibition): View
     {
+        app(ExhibitionAwardService::class)->settleAllClosedExhibitions();
+
         $applications = $exhibition->applications()
             ->with(['artist.artistProfile'])
+            ->withCount('votes')
+            ->withSum('scores', 'score')
             ->latest()
             ->paginate(20);
 
@@ -127,6 +145,18 @@ class AdminExhibitionController extends Controller
         $reservedCount = $exhibition->applications()
             ->reservesArtistPlace()
             ->count();
+        $settlement = $exhibition->settlement;
+        $adminFundTotal = ExhibitionSettlement::query()
+            ->sum('admin_fund_amount');
+        $prizeCredits = ArtistWalletTransaction::query()
+            ->whereIn('exhibition_application_id', $exhibition->applications()
+                ->select('id'))
+            ->where('type', 'exhibition_prize')
+            ->get()
+            ->keyBy('exhibition_application_id');
+        $prizeCreditsTotal = $prizeCredits->sum(
+            fn (ArtistWalletTransaction $transaction): float => (float) $transaction->amount
+        );
 
         return view('admin.exhibitions.applications', compact(
             'exhibition',
@@ -134,8 +164,29 @@ class AdminExhibitionController extends Controller
             'confirmedIncome',
             'enrolledCount',
             'pendingPaymentCount',
-            'reservedCount'
+            'reservedCount',
+            'settlement',
+            'adminFundTotal',
+            'prizeCredits',
+            'prizeCreditsTotal'
         ));
+    }
+
+    public function finalizeAwards(
+        Request $request,
+        Exhibition $exhibition,
+        ExhibitionAwardService $awardService
+    ): RedirectResponse {
+        try {
+            $awardService->settle($exhibition, (int) $request->user()->id);
+        } catch (DomainException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+
+        return redirect()->route(
+            'admin.exhibitions.applications',
+            $exhibition
+        )->with('success', 'Exhibition awards finalized and artist prize balances credited.');
     }
 
     private function validatedData(Request $request): array

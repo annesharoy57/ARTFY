@@ -64,7 +64,14 @@
                                 <strong>Price not set</strong>
                             @endif
 
-                            <form
+                                <a
+                                    class="studio-engagement-link"
+                                    href="{{ route('artworks.show', ['slug' => 'uploaded-' . $artwork->id]) }}"
+                                >
+                                    View {{ $artwork->likes_count }} likes · {{ $artwork->comments_count }} comments
+                                </a>
+
+                                <form
                                 action="{{ route('artist.artworks.destroy', $artwork) }}"
                                 method="POST"
                                 onsubmit="return confirm('Are you sure you want to delete this artwork?')"
@@ -106,6 +113,12 @@
                             @if ($artwork->price !== null)
                                 <strong>৳{{ number_format((float) $artwork->price, 2) }}</strong>
                             @endif
+                            <a
+                                class="studio-engagement-link"
+                                href="{{ route('artworks.show', ['slug' => 'uploaded-' . $artwork->id]) }}"
+                            >
+                                View {{ $artwork->likes_count }} likes · {{ $artwork->comments_count }} comments
+                            </a>
                         </div>
                     </article>
                 @endforeach
@@ -176,6 +189,13 @@
     .studio-artwork-info h3 { margin: 0 0 8px; }
     .studio-artwork-info p { color: #72795f; }
     .studio-artwork-info strong { display: block; margin: 12px 0; }
+    .studio-engagement-link {
+        display: inline-block;
+        margin: 5px 0 14px;
+        color: #414c2c;
+        font-size: 13px;
+        font-weight: 600;
+    }
 
     .studio-empty {
         background: #fffef9;

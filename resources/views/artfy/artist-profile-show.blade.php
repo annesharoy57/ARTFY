@@ -150,6 +150,7 @@
     $totalArtworks = $allArtworks->count();
     $totalAvailable = $availableArtworks->count();
     $totalSold = $soldArtworks->count();
+    $followerCount = $followerCount ?? 0;
 @endphp
 
 {{-- Same navigation, footer, and layout --}}
@@ -261,6 +262,46 @@
                     </a>
                 @endif
             @endif
+
+            @if (
+                !$isAdminPreview
+                && isset($userRecord)
+                && auth()->check()
+                && auth()->user()->isArtLover()
+            )
+                @if ($isFollowingArtist ?? false)
+                    <form
+                        class="artist-follow-form"
+                        action="{{ route('artists.unfollow', ['artist' => $userRecord->id]) }}"
+                        method="POST"
+                    >
+                        @csrf
+                        @method('DELETE')
+                        <button class="artist-button artist-button-outline" type="submit">
+                            Unfollow
+                        </button>
+                    </form>
+                @else
+                    <form
+                        class="artist-follow-form"
+                        action="{{ route('artists.follow', ['artist' => $userRecord->id]) }}"
+                        method="POST"
+                    >
+                        @csrf
+                        <button class="artist-button artist-button-primary" type="submit">
+                            Follow Artist
+                        </button>
+                    </form>
+                @endif
+            @elseif (
+                !$isAdminPreview
+                && isset($userRecord)
+                && auth()->guest()
+            )
+                <a class="artist-button artist-button-outline" href="{{ route('login') }}">
+                    Log in to follow
+                </a>
+            @endif
         </div>
 
     </section>
@@ -304,6 +345,14 @@
             <strong>{{ $totalArtworks }}</strong>
             <span>Total Artworks</span>
         </div>
+
+        @if ($userRecord?->isArtist())
+            <div class="artist-stat">
+                <span class="artist-stat-icon" aria-hidden="true">♡</span>
+                <strong>{{ number_format($followerCount) }}</strong>
+                <span>Followers</span>
+            </div>
+        @endif
 
         <div class="artist-stat">
             <span class="artist-stat-icon" aria-hidden="true">◇</span>

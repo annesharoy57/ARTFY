@@ -210,6 +210,10 @@
     gap: 10px;
 }
 
+.artist-profile-page .artist-follow-form {
+    margin: 0;
+}
+
 /* =========================================
    BUTTONS AND LINKS
    ========================================= */

@@ -1,15 +1,21 @@
 <?php
 
 use App\Http\Controllers\AdminArtworkController;
+use App\Http\Controllers\AdminCoAdminController;
 use App\Http\Controllers\AdminExhibitionController;
 use App\Http\Controllers\AdminMembershipController;
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\ArtistArtworkController;
+use App\Http\Controllers\ArtistFollowController;
 use App\Http\Controllers\ArtistMembershipPaymentController;
 use App\Http\Controllers\ArtistProfileController;
+use App\Http\Controllers\ArtistWalletController;
+use App\Http\Controllers\ArtworkEngagementController;
 use App\Http\Controllers\ArtworkPurchaseController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ExhibitionApplicationController;
+use App\Http\Controllers\ExhibitionVoteController;
+use App\Http\Controllers\CoAdminExhibitionController;
 use App\Http\Controllers\GalleryController;
 use App\Http\Controllers\NotificationController;
 use Illuminate\Support\Facades\Route;
@@ -50,17 +56,6 @@ Route::get('/exhibitions', [GalleryController::class, 'exhibitions'])
 
 Route::get('/exhibitions/{slug}', [GalleryController::class, 'exhibition'])
     ->name('exhibitions.show');
-
-// ========================================
-// FAVORITES
-// ========================================
-
-Route::view('/favorites', 'artfy.page', [
-    'title' => 'Your favorites',
-    'eyebrow' => 'A personal collection',
-    'description' => 'Save the artworks that speak to you and keep your favorite discoveries close.',
-    'pageType' => 'favorites',
-])->name('favorites.index');
 
 // ========================================
 // LOGIN / REGISTRATION
@@ -166,6 +161,41 @@ Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])
         ->name('logout');
 
+    Route::post('/artists/{artist}/follow', [
+        ArtistFollowController::class,
+        'follow',
+    ])->name('artists.follow');
+
+    Route::delete('/artists/{artist}/follow', [
+        ArtistFollowController::class,
+        'unfollow',
+    ])->name('artists.unfollow');
+
+    Route::middleware('role:art_lover')->group(function () {
+        Route::get('/favorites', [GalleryController::class, 'favorites'])
+            ->name('favorites.index');
+
+        Route::post('/artworks/{artwork}/like', [
+            ArtworkEngagementController::class,
+            'toggleLike',
+        ])->name('artworks.like');
+
+        Route::post('/artworks/{artwork}/favorite', [
+            ArtworkEngagementController::class,
+            'toggleFavorite',
+        ])->name('artworks.favorite');
+
+        Route::post('/artworks/{artwork}/comments', [
+            ArtworkEngagementController::class,
+            'storeComment',
+        ])->name('artworks.comments.store');
+
+        Route::patch('/artworks/{artwork}/comments/{comment}', [
+            ArtworkEngagementController::class,
+            'updateComment',
+        ])->name('artworks.comments.update');
+    });
+
     // ------------------------------------
     // ARTWORK PURCHASE / CHECKOUT
     // Existing artwork purchase flow retained.
@@ -230,6 +260,11 @@ Route::middleware('auth')->group(function () {
         'submitArtwork',
     ])->name('exhibitions.submit-artwork');
 
+    Route::middleware('role:art_lover')->post(
+        '/exhibitions/{exhibition}/applications/{application}/vote',
+        [ExhibitionVoteController::class, 'store']
+    )->name('exhibitions.vote');
+
     Route::put('/exhibitions/{exhibition}/artwork', [
         ExhibitionApplicationController::class,
         'updateArtwork',
@@ -250,6 +285,11 @@ Route::middleware('auth')->group(function () {
         'editArtLover',
     ])->name('my-profile.edit');
 
+    Route::middleware('role:artist')->get('/artist/wallet', [
+        ArtistWalletController::class,
+        'index',
+    ])->name('artist.wallet');
+
     Route::put('/my-profile', [
         ArtistProfileController::class,
         'updateArtLover',
@@ -261,6 +301,15 @@ Route::middleware('auth')->group(function () {
     // ------------------------------------
 
     Route::middleware('artist.active')->group(function () {
+        Route::post('/artworks/{artwork}/comments/{comment}/reply', [
+            ArtworkEngagementController::class,
+            'reply',
+        ])->name('artworks.comments.reply');
+
+        Route::post('/artworks/{artwork}/comments/{comment}/like', [
+            ArtworkEngagementController::class,
+            'toggleCommentLike',
+        ])->name('artworks.comments.like');
 
         Route::get('/artist/my-profile', [
             ArtistProfileController::class,
@@ -365,6 +414,26 @@ Route::middleware('auth')->group(function () {
             'applications',
         ])->name('admin.exhibitions.applications');
 
+        Route::post('/admin/exhibitions/{exhibition}/finalize-awards', [
+            AdminExhibitionController::class,
+            'finalizeAwards',
+        ])->name('admin.exhibitions.finalize-awards');
+
+        Route::get('/admin/co-admins', [
+            AdminCoAdminController::class,
+            'index',
+        ])->name('admin.co-admins.index');
+
+        Route::post('/admin/co-admins', [
+            AdminCoAdminController::class,
+            'store',
+        ])->name('admin.co-admins.store');
+
+        Route::put('/admin/co-admins/{coAdmin}', [
+            AdminCoAdminController::class,
+            'update',
+        ])->name('admin.co-admins.update');
+
         Route::post('/admin/memberships/{application}/approve', [
             AdminMembershipController::class,
             'approve',
@@ -409,6 +478,23 @@ Route::middleware('auth')->group(function () {
             AdminUserController::class,
             'showArtLover',
         ])->name('admin.art-lovers.show');
+    });
+
+    Route::middleware('role:co_admin')->prefix('co-admin')->name('co-admin.')->group(function () {
+        Route::get('/exhibitions', [
+            CoAdminExhibitionController::class,
+            'index',
+        ])->name('exhibitions.index');
+
+        Route::get('/exhibitions/{exhibition}', [
+            CoAdminExhibitionController::class,
+            'show',
+        ])->name('exhibitions.show');
+
+        Route::post('/exhibitions/{exhibition}/applications/{application}/score', [
+            CoAdminExhibitionController::class,
+            'score',
+        ])->name('exhibitions.score');
     });
 
     // ------------------------------------

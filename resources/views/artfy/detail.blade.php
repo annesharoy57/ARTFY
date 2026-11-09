@@ -203,10 +203,27 @@
                         @endauth
                     @endif
 
-                    <a class="artwork-secondary-button" href="{{ route('favorites.index') }}">
-                        View favorites
-                        <span aria-hidden="true">♡</span>
-                    </a>
+                    @auth
+                        @if (auth()->user()->isArtLover())
+                            <a class="artwork-secondary-button" href="{{ route('favorites.index') }}">
+                                View favorites
+                                <span aria-hidden="true">→</span>
+                            </a>
+                        @else
+                            <a class="artwork-secondary-button" href="{{ route('artworks.index') }}">
+                                Explore artworks
+                                <span aria-hidden="true">↗</span>
+                            </a>
+                        @endif
+                    @else
+                        <a
+                            class="artwork-secondary-button"
+                            href="{{ route('login', ['redirect' => url()->current()]) }}"
+                        >
+                            Log in to save favorites
+                            <span aria-hidden="true">♡</span>
+                        </a>
+                    @endauth
                 </div>
 
                 <p class="artwork-purchase-note">
@@ -249,6 +266,177 @@
         </div>
     </div>
 
+    <section class="artwork-engagement" aria-labelledby="engagement-heading">
+        <div class="engagement-heading">
+            <div>
+                <p class="artwork-eyebrow">THE ART COMMUNITY</p>
+                <h2 id="engagement-heading">Appreciation &amp; conversation</h2>
+            </div>
+            <span>{{ $item['likes'] }} {{ $item['likes'] === 1 ? 'like' : 'likes' }}</span>
+        </div>
+
+        @auth
+            @if (auth()->user()->isArtLover())
+                <div class="engagement-actions">
+                    <form action="{{ route('artworks.like', $item['id']) }}" method="POST">
+                        @csrf
+                        <input type="hidden" name="return_to" value="{{ request()->getRequestUri() }}">
+                        <button class="engagement-button" type="submit">
+                            {{ $item['is_liked'] ? '♥ Liked' : '♡ Like artwork' }}
+                        </button>
+                    </form>
+
+                    <form action="{{ route('artworks.favorite', $item['id']) }}" method="POST">
+                        @csrf
+                        <input type="hidden" name="return_to" value="{{ request()->getRequestUri() }}">
+                        <button
+                            class="engagement-button favorite-button"
+                            type="submit"
+                            aria-pressed="{{ $item['is_saved'] ? 'true' : 'false' }}"
+                        >
+                            <svg class="artwork-save-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M6 4.5A2.5 2.5 0 0 1 8.5 2h7A2.5 2.5 0 0 1 18 4.5V22l-6-4-6 4V4.5Z"/>
+                            </svg>
+                            {{ $item['is_saved'] ? 'Saved to favorites' : 'Save to favorites' }}
+                        </button>
+                    </form>
+                </div>
+
+                <form
+                    class="comment-form"
+                    action="{{ route('artworks.comments.store', $item['id']) }}"
+                    method="POST"
+                >
+                    @csrf
+                    <input type="hidden" name="return_to" value="{{ request()->getRequestUri() }}">
+                    <label for="new-artwork-comment">Leave a comment</label>
+                    <textarea
+                        id="new-artwork-comment"
+                        name="body"
+                        rows="3"
+                        maxlength="2000"
+                        required
+                    >{{ old('body') }}</textarea>
+                    <button class="engagement-submit" type="submit">Post comment</button>
+                </form>
+            @endif
+        @else
+            <p class="engagement-sign-in">
+                <a href="{{ route('login', ['redirect' => url()->current()]) }}">Log in</a>
+                as an art lover to like, save, or comment on this artwork.
+            </p>
+        @endauth
+
+        @if ($item['can_manage'])
+            <div class="artist-like-list">
+                <h3>People who liked this artwork</h3>
+                @if ($likeUsers->isEmpty())
+                    <p>No likes yet.</p>
+                @else
+                    <ul>
+                        @foreach ($likeUsers as $likeUser)
+                            <li>{{ $likeUser->name }}</li>
+                        @endforeach
+                    </ul>
+                @endif
+            </div>
+        @endif
+
+        <div class="artwork-comments">
+            <h3>Comments ({{ $comments->count() }})</h3>
+            @forelse ($comments as $comment)
+                <article class="artwork-comment">
+                    <div class="comment-byline">
+                        <strong>{{ $comment->user->name }}</strong>
+                        <time datetime="{{ $comment->created_at->toAtomString() }}">
+                            {{ $comment->created_at->diffForHumans() }}
+                        </time>
+                    </div>
+
+                    @if (auth()->id() === $comment->user_id && $comment->parent_id === null)
+                        <form
+                            class="comment-edit-form"
+                            action="{{ route('artworks.comments.update', [$item['id'], $comment]) }}"
+                            method="POST"
+                        >
+                            @csrf
+                            @method('PATCH')
+                            <input type="hidden" name="return_to" value="{{ request()->getRequestUri() }}">
+                            <label class="visually-hidden" for="comment-{{ $comment->id }}">Edit your comment</label>
+                            <textarea
+                                id="comment-{{ $comment->id }}"
+                                name="body"
+                                rows="2"
+                                maxlength="2000"
+                                required
+                            >{{ $comment->body }}</textarea>
+                            <button class="engagement-submit" type="submit">Save edit</button>
+                        </form>
+                    @else
+                        <p class="comment-body">{{ $comment->body }}</p>
+                    @endif
+
+                    @if ($item['can_manage'])
+                        <div class="comment-artist-actions">
+                            <form
+                                action="{{ route('artworks.comments.like', [$item['id'], $comment]) }}"
+                                method="POST"
+                            >
+                                @csrf
+                                <input type="hidden" name="return_to" value="{{ request()->getRequestUri() }}">
+                                <button class="comment-action-button" type="submit">
+                                    {{ $comment->likes_count }} {{ $comment->likes_count === 1 ? 'like' : 'likes' }} ·
+                                    {{ $comment->liked_by_viewer ? 'Unlike' : 'Like comment' }}
+                                </button>
+                            </form>
+                        </div>
+                    @else
+                        <span class="comment-like-count">
+                            {{ $comment->likes_count }} {{ $comment->likes_count === 1 ? 'like' : 'likes' }}
+                        </span>
+                    @endif
+
+                    @foreach ($comment->replies as $reply)
+                        <div class="artwork-comment-reply">
+                            <div class="comment-byline">
+                                <strong>{{ $reply->user->name }}</strong>
+                                <span>Artist reply</span>
+                            </div>
+                            <p class="comment-body">{{ $reply->body }}</p>
+                            @if ($item['can_manage'])
+                                <span class="comment-like-count">
+                                    {{ $reply->likes_count }} {{ $reply->likes_count === 1 ? 'like' : 'likes' }}
+                                </span>
+                            @endif
+                        </div>
+                    @endforeach
+
+                    @if ($item['can_manage'])
+                        <form
+                            class="artist-reply-form"
+                            action="{{ route('artworks.comments.reply', [$item['id'], $comment]) }}"
+                            method="POST"
+                        >
+                            @csrf
+                            <input type="hidden" name="return_to" value="{{ request()->getRequestUri() }}">
+                            <label for="reply-{{ $comment->id }}">Reply as the artist</label>
+                            <textarea
+                                id="reply-{{ $comment->id }}"
+                                name="body"
+                                rows="2"
+                                maxlength="2000"
+                                required
+                            ></textarea>
+                            <button class="engagement-submit" type="submit">Reply</button>
+                        </form>
+                    @endif
+                </article>
+            @empty
+                <p class="comments-empty">Be the first to share what this artwork means to you.</p>
+            @endforelse
+        </div>
+    </section>
+
     <div class="artwork-detail-bottom">
         <span>ARTFY</span>
         <p>Celebrating creativity, one artwork at a time.</p>
@@ -270,6 +458,215 @@
         padding: clamp(22px, 4vw, 54px) clamp(16px, 4vw, 56px) 36px;
         color: var(--detail-ink);
         box-sizing: border-box;
+    }
+
+    .artwork-engagement {
+        margin-top: 40px;
+        padding: clamp(20px, 4vw, 36px);
+        border: 1px solid var(--detail-border);
+        border-radius: 8px;
+        background: #fffef9;
+    }
+
+    .engagement-heading,
+    .comment-byline {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .engagement-heading h2 {
+        margin: 8px 0 0;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: clamp(22px, 3vw, 30px);
+        font-weight: 500;
+    }
+
+    .engagement-heading > span,
+    .comment-byline time,
+    .comment-byline > span,
+    .comment-like-count,
+    .artist-like-list p,
+    .comments-empty {
+        color: var(--detail-muted-olive);
+        font-size: 0.85rem;
+    }
+
+    .engagement-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin: 22px 0;
+    }
+
+    .engagement-button,
+    .engagement-submit,
+    .comment-action-button {
+        border: 1px solid #c9cdbd;
+        border-radius: 6px;
+        background: #f5f3e8;
+        color: var(--detail-dark-olive);
+        font: inherit;
+        cursor: pointer;
+    }
+
+    .engagement-button {
+        min-height: 42px;
+        padding: 9px 14px;
+    }
+
+    .favorite-button[aria-pressed="true"] {
+        color: #a53d35;
+    }
+
+    .favorite-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .favorite-button .artwork-save-icon {
+        width: 16px;
+        height: 19px;
+    }
+
+    .comment-form,
+    .artist-reply-form {
+        display: grid;
+        gap: 9px;
+    }
+
+    .comment-form {
+        margin: 22px 0 30px;
+    }
+
+    .comment-form label,
+    .artist-reply-form label {
+        font-size: 0.88rem;
+        font-weight: 700;
+    }
+
+    .comment-form textarea,
+    .comment-edit-form textarea,
+    .artist-reply-form textarea {
+        width: 100%;
+        padding: 11px 12px;
+        border: 1px solid #dcd9cb;
+        border-radius: 6px;
+        background: white;
+        color: var(--detail-ink);
+        font: inherit;
+        resize: vertical;
+    }
+
+    .engagement-submit {
+        justify-self: start;
+        padding: 9px 14px;
+        background: var(--detail-olive);
+        color: white;
+    }
+
+    .engagement-sign-in a {
+        color: var(--detail-olive);
+        font-weight: 700;
+    }
+
+    .artist-like-list {
+        margin: 26px 0;
+        padding: 18px;
+        border-radius: 6px;
+        background: #f5f3e8;
+    }
+
+    .artist-like-list h3,
+    .artwork-comments h3 {
+        margin: 0 0 14px;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 1.2rem;
+        font-weight: 500;
+    }
+
+    .artist-like-list ul {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .artist-like-list li {
+        padding: 6px 10px;
+        border: 1px solid #dcd9cb;
+        border-radius: 20px;
+        background: #fffef9;
+        font-size: 0.82rem;
+    }
+
+    .artwork-comments {
+        margin-top: 30px;
+        border-top: 1px solid var(--detail-border);
+        padding-top: 24px;
+    }
+
+    .artwork-comment {
+        padding: 18px 0;
+        border-bottom: 1px solid var(--detail-border);
+    }
+
+    .comment-byline {
+        justify-content: flex-start;
+    }
+
+    .comment-byline time {
+        margin-left: auto;
+    }
+
+    .comment-body {
+        margin: 10px 0;
+        line-height: 1.65;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+    }
+
+    .comment-edit-form {
+        display: grid;
+        gap: 8px;
+        margin: 10px 0;
+    }
+
+    .comment-action-button {
+        padding: 6px 10px;
+        font-size: 0.82rem;
+    }
+
+    .comment-like-count {
+        display: inline-block;
+        margin-top: 7px;
+    }
+
+    .artwork-comment-reply {
+        margin: 16px 0 16px 18px;
+        padding: 12px 16px;
+        border-left: 2px solid #aeb799;
+        background: #f8f7f0;
+    }
+
+    .artist-reply-form {
+        margin: 16px 0 4px 18px;
+    }
+
+    @media (max-width: 600px) {
+        .engagement-heading {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        .artwork-comment-reply,
+        .artist-reply-form {
+            margin-left: 8px;
+        }
     }
 
     .artwork-detail-page *,

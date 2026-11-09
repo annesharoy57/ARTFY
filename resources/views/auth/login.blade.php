@@ -246,6 +246,11 @@
                     {{ old('role', $role ?? 'art_lover') === 'admin' ? 'selected' : '' }}>
                     Admin
                 </option>
+
+                <option value="co_admin"
+                    {{ old('role', $role ?? 'art_lover') === 'co_admin' ? 'selected' : '' }}>
+                    Exhibition Co-admin
+                </option>
             </select>
 
             <label for="email">Email address</label>

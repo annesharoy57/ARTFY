@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -51,9 +52,51 @@ class User extends Authenticatable
         return $this->hasMany(Artwork::class);
     }
 
+    public function likedArtworks(): BelongsToMany
+    {
+        return $this->belongsToMany(Artwork::class, 'artwork_likes')
+            ->withTimestamps();
+    }
+
+    public function savedArtworks(): BelongsToMany
+    {
+        return $this->belongsToMany(Artwork::class, 'artwork_favorites')
+            ->withTimestamps();
+    }
+
+    public function artworkComments(): HasMany
+    {
+        return $this->hasMany(ArtworkComment::class);
+    }
+
+    public function followers(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            self::class,
+            'artist_follows',
+            'artist_id',
+            'follower_id'
+        )->withTimestamps();
+    }
+
+    public function following(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            self::class,
+            'artist_follows',
+            'follower_id',
+            'artist_id'
+        )->withTimestamps();
+    }
+
     public function exhibitionApplications(): HasMany
     {
         return $this->hasMany(ExhibitionApplication::class);
+    }
+
+    public function artistWalletTransactions(): HasMany
+    {
+        return $this->hasMany(ArtistWalletTransaction::class);
     }
 
     /**
@@ -80,5 +123,10 @@ class User extends Authenticatable
     public function isArtLover(): bool
     {
         return $this->role === 'art_lover';
+    }
+
+    public function isCoAdmin(): bool
+    {
+        return $this->role === 'co_admin';
     }
 }

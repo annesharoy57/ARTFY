@@ -89,7 +89,7 @@ class AuthController extends Controller
     {
         $role = $request->query('role', 'art_lover');
 
-        if (!in_array($role, ['admin', 'artist', 'art_lover'], true)) {
+        if (!in_array($role, ['admin', 'co_admin', 'artist', 'art_lover'], true)) {
             return redirect()->route('auth.choose-role');
         }
 
@@ -104,7 +104,7 @@ class AuthController extends Controller
         $validated = $request->validate([
             'role' => [
                 'required',
-                Rule::in(['admin', 'artist', 'art_lover']),
+                Rule::in(['admin', 'co_admin', 'artist', 'art_lover']),
             ],
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],
@@ -144,6 +144,10 @@ class AuthController extends Controller
         // Admins go to the Admin Dashboard.
         if ($user->role === 'admin') {
             return redirect()->route('admin.dashboard');
+        }
+
+        if ($user->role === 'co_admin') {
+            return redirect()->route('co-admin.exhibitions.index');
         }
 
         // Artists with approved applications and verified payments
