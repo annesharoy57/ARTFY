@@ -87,6 +87,24 @@ class AuthController extends Controller
      */
     public function showLogin(Request $request)
     {
+        $authenticatedUser = Auth::user();
+
+        if ($authenticatedUser?->role === 'artist') {
+            $application = $authenticatedUser->artistApplication;
+            $membershipApproved = $application
+                && $application->status === 'approved'
+                && $application->payment_status === 'verified'
+                && in_array(
+                    $authenticatedUser->membership_status,
+                    ['active', 'approved'],
+                    true
+                );
+
+            if (! $membershipApproved) {
+                return redirect()->route('artist.application');
+            }
+        }
+
         $role = $request->query('role', 'art_lover');
 
         if (!in_array($role, ['admin', 'co_admin', 'artist', 'art_lover'], true)) {

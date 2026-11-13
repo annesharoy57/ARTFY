@@ -1,9 +1,21 @@
 @extends('artfy.layout')
 
-@section('title', 'My Profile | Artfy')
+@php($isAdminPreview = $adminPreview ?? false)
+
+@section('title', $isAdminPreview ? ($user->name . ' | Art Lover | Artfy') : 'My Profile | Artfy')
 
 @section('content')
 <div class="lover-profile-page">
+
+    @if ($isAdminPreview)
+        <div class="lover-admin-topbar">
+            <a href="{{ route('admin.art-lovers.index') }}" class="lover-admin-back">
+                <span aria-hidden="true">&larr;</span>
+                Back to Art Lovers
+            </a>
+            <span class="lover-admin-context">ACCOUNT PREVIEW</span>
+        </div>
+    @endif
 
     {{-- Success message --}}
     @if (session('success'))
@@ -15,9 +27,9 @@
 
     {{-- Profile heading --}}
     <header class="lover-page-heading">
-        <span class="lover-eyebrow">ARTFY · YOUR PERSONAL SPACE</span>
-        <h1>Your Art Journey</h1>
-        <p>A little space for you in the world of art.</p>
+        <span class="lover-eyebrow">{{ $isAdminPreview ? 'ARTFY · ADMINISTRATOR VIEW' : 'ARTFY · YOUR PERSONAL SPACE' }}</span>
+        <h1>{{ $isAdminPreview ? 'Art Lover Profile' : 'Your Art Journey' }}</h1>
+        <p>{{ $isAdminPreview ? 'Read-only account details for ' . $user->name . '.' : 'A little space for you in the world of art.' }}</p>
     </header>
 
     <main class="lover-profile-card">
@@ -58,13 +70,17 @@
                 </p>
 
                 <div class="lover-action-buttons">
-                    <a
-                        href="{{ route('my-profile.edit') }}"
-                        class="lover-btn lover-btn-primary"
-                    >
-                        <span aria-hidden="true">✎</span>
-                        Edit Profile
-                    </a>
+                    @if ($isAdminPreview)
+                        <span class="lover-readonly-label">Read-only account view</span>
+                    @else
+                        <a
+                            href="{{ route('my-profile.edit') }}"
+                            class="lover-btn lover-btn-primary"
+                        >
+                            <span aria-hidden="true">✎</span>
+                            Edit Profile
+                        </a>
+                    @endif
 
                     <a
                         href="{{ route('home') }}"
@@ -92,12 +108,16 @@
                     <h3>Personal Information</h3>
                 </div>
 
-                <a
-                    href="{{ route('my-profile.edit') }}"
-                    class="lover-edit-link"
-                >
-                    Edit details <span aria-hidden="true">↗</span>
-                </a>
+                @if ($isAdminPreview)
+                    <span class="lover-readonly-label">Read only</span>
+                @else
+                    <a
+                        href="{{ route('my-profile.edit') }}"
+                        class="lover-edit-link"
+                    >
+                        Edit details <span aria-hidden="true">↗</span>
+                    </a>
+                @endif
             </div>
 
             <div class="lover-info-grid">
@@ -519,6 +539,56 @@
     color: var(--lover-dark);
     text-decoration: underline;
     text-underline-offset: 4px;
+}
+
+.lover-readonly-label {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 12px;
+    border: 1px solid #dfe2d3;
+    border-radius: 999px;
+    background: #f0f1e8;
+    color: #697354;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .03em;
+}
+
+.lover-admin-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    max-width: 850px;
+    margin: 0 auto 30px;
+}
+
+.lover-admin-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 10px 15px;
+    border: 1px solid rgba(85, 97, 58, .2);
+    border-radius: 999px;
+    background: rgba(255, 254, 249, .75);
+    color: var(--lover-olive);
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: background .18s ease, border-color .18s ease, transform .18s ease;
+}
+
+.lover-admin-back:hover {
+    transform: translateX(-2px);
+    border-color: var(--lover-olive);
+    background: #fffef9;
+}
+
+.lover-admin-context {
+    color: var(--lover-muted);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .16em;
 }
 
 .lover-info-grid {

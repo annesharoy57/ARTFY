@@ -24,7 +24,10 @@ class ExhibitionApplicationController extends Controller
         $user = $request->user();
         abort_unless($user && $user->role === 'artist', 403);
 
-        $baseUrl = rtrim((string) config('app.url'), '/');
+        $baseUrl = rtrim((string) (
+            config('services.sslcommerz.callback_url')
+                ?: config('app.url')
+        ), '/');
         if (
             blank($baseUrl)
             || ! filter_var($baseUrl, FILTER_VALIDATE_URL)
@@ -34,7 +37,7 @@ class ExhibitionApplicationController extends Controller
         ) {
             return back()->with(
                 'error',
-                'The public HTTPS Artfy URL is not configured. Please contact the administrator.'
+                'The public HTTPS payment callback URL is not configured. Please contact the administrator.'
             );
         }
 
@@ -242,11 +245,35 @@ class ExhibitionApplicationController extends Controller
                 ]);
         }
 
+        $digitalFilePath = null;
+        if ($validated['artwork_type'] === 'digital') {
+            try {
+                $digitalFilePath = $request->file('digital_file')->store(
+                    'exhibition-digital-artworks',
+                    'local'
+                );
+            } catch (Throwable $exception) {
+                Storage::disk('public')->delete($imagePath);
+                report($exception);
+
+                return back()->withInput($request->except(['artwork_image', 'digital_file']))
+                    ->withErrors(['digital_file' => 'The PDF could not be uploaded. Please try again.']);
+            }
+
+            if (! $digitalFilePath) {
+                Storage::disk('public')->delete($imagePath);
+
+                return back()->withInput($request->except(['artwork_image', 'digital_file']))
+                    ->withErrors(['digital_file' => 'The PDF could not be saved. Please try again.']);
+            }
+        }
+
         try {
             DB::transaction(function () use (
                 $application,
                 $validated,
-                $imagePath
+                $imagePath,
+                $digitalFilePath
             ): void {
                 $locked = ExhibitionApplication::query()
                     ->whereKey($application->id)
@@ -266,12 +293,17 @@ class ExhibitionApplicationController extends Controller
                 $locked->artwork_description =
                     $validated['artwork_description'];
                 $locked->artwork_price = $validated['artwork_price'];
+                $locked->artwork_type = $validated['artwork_type'];
                 $locked->artwork_image = $imagePath;
+                $locked->digital_file_path = $digitalFilePath;
                 $locked->status = 'confirmed';
                 $locked->save();
             });
         } catch (Throwable $exception) {
             Storage::disk('public')->delete($imagePath);
+            if ($digitalFilePath) {
+                Storage::disk('local')->delete($digitalFilePath);
+            }
             report($exception);
 
             return back()->with(
@@ -320,7 +352,27 @@ class ExhibitionApplicationController extends Controller
             );
         }
 
-        $validated = $this->validateArtwork($request, false);
+        $validated = $this->validateArtwork(
+            $request,
+            false,
+            filled($application->digital_file_path)
+        );
+
+        if (
+            $application->orders()
+                ->whereIn('payment_status', ['pending', 'verified'])
+                ->exists()
+            && (
+                $validated['artwork_type'] !== ($application->artwork_type ?: 'physical')
+                || $request->hasFile('digital_file')
+            )
+        ) {
+            return back()->withInput($request->except(['artwork_image', 'digital_file']))
+                ->withErrors([
+                    'artwork_type' => 'Artwork format or PDF cannot be changed while a buyer has an active or completed order.',
+                ]);
+        }
+
         $imagePath = null;
 
         if ($request->hasFile('artwork_image')) {
@@ -349,6 +401,26 @@ class ExhibitionApplicationController extends Controller
         }
 
         $oldImagePath = null;
+        $digitalFilePath = null;
+        if ($validated['artwork_type'] === 'digital' && $request->hasFile('digital_file')) {
+            try {
+                $digitalFilePath = $request->file('digital_file')->store(
+                    'exhibition-digital-artworks',
+                    'local'
+                );
+            } catch (Throwable $exception) {
+                if ($imagePath !== null) Storage::disk('public')->delete($imagePath);
+                report($exception);
+                return back()->withInput($request->except(['artwork_image', 'digital_file']))
+                    ->withErrors(['digital_file' => 'The PDF could not be uploaded. Please try again.']);
+            }
+            if (! $digitalFilePath) {
+                if ($imagePath !== null) Storage::disk('public')->delete($imagePath);
+                return back()->withInput($request->except(['artwork_image', 'digital_file']))
+                    ->withErrors(['digital_file' => 'The PDF could not be saved. Please try again.']);
+            }
+        }
+        $oldDigitalFilePath = null;
 
         try {
             DB::transaction(function () use (
@@ -357,7 +429,9 @@ class ExhibitionApplicationController extends Controller
                 $user,
                 $validated,
                 $imagePath,
-                &$oldImagePath
+                $digitalFilePath,
+                &$oldImagePath,
+                &$oldDigitalFilePath
             ): void {
                 $lockedExhibition = Exhibition::query()
                     ->whereKey($exhibition->id)
@@ -381,10 +455,17 @@ class ExhibitionApplicationController extends Controller
                 }
 
                 $oldImagePath = $locked->artwork_image;
+                $oldDigitalFilePath = $locked->digital_file_path;
                 $locked->artwork_title = $validated['artwork_title'];
                 $locked->artwork_description =
                     $validated['artwork_description'];
                 $locked->artwork_price = $validated['artwork_price'];
+                $locked->artwork_type = $validated['artwork_type'];
+                if ($validated['artwork_type'] === 'physical') {
+                    $locked->digital_file_path = null;
+                } elseif ($digitalFilePath !== null) {
+                    $locked->digital_file_path = $digitalFilePath;
+                }
                 if ($imagePath !== null) {
                     $locked->artwork_image = $imagePath;
                 }
@@ -393,6 +474,9 @@ class ExhibitionApplicationController extends Controller
         } catch (Throwable $exception) {
             if ($imagePath !== null) {
                 Storage::disk('public')->delete($imagePath);
+            }
+            if ($digitalFilePath !== null) {
+                Storage::disk('local')->delete($digitalFilePath);
             }
             report($exception);
 
@@ -406,6 +490,12 @@ class ExhibitionApplicationController extends Controller
 
         if ($imagePath !== null && $oldImagePath !== null) {
             Storage::disk('public')->delete($oldImagePath);
+        }
+        if (
+            $oldDigitalFilePath !== null
+            && ($validated['artwork_type'] === 'physical' || $digitalFilePath !== null)
+        ) {
+            Storage::disk('local')->delete($oldDigitalFilePath);
         }
 
         return redirect()->route(
@@ -598,8 +688,14 @@ class ExhibitionApplicationController extends Controller
         });
     }
 
-    private function validateArtwork(Request $request, bool $imageRequired): array
+    private function validateArtwork(
+        Request $request,
+        bool $imageRequired,
+        bool $hasExistingDigitalFile = false
+    ): array
     {
+        $type = $request->input('artwork_type', 'physical');
+
         return $request->validate([
             'artwork_title' => ['required', 'string', 'max:180'],
             'artwork_description' => ['required', 'string', 'max:5000'],
@@ -610,11 +706,19 @@ class ExhibitionApplicationController extends Controller
                 'min:0',
                 'max:9999999999.99',
             ],
+            'artwork_type' => ['required', 'in:physical,digital'],
             'artwork_image' => [
                 $imageRequired ? 'required' : 'nullable',
                 'image',
                 'mimes:jpg,jpeg,png,webp',
                 'max:5120',
+            ],
+            'digital_file' => [
+                $type === 'digital' && ! $hasExistingDigitalFile ? 'required' : 'nullable',
+                'prohibited_unless:artwork_type,digital',
+                'file',
+                'mimes:pdf',
+                'max:20480',
             ],
         ]);
     }

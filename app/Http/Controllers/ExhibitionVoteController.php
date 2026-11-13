@@ -39,6 +39,12 @@ class ExhibitionVoteController extends Controller
                     );
                 }
 
+                if ((int) $lockedApplication->user_id === (int) $request->user()->id) {
+                    throw new RuntimeException(
+                        'You cannot vote for your own exhibition artwork.'
+                    );
+                }
+
                 if (ExhibitionVote::query()
                     ->where('exhibition_application_id', $lockedApplication->id)
                     ->where('user_id', $request->user()->id)

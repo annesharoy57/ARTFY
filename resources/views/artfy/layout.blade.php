@@ -289,59 +289,60 @@
     </header>
 
     @if (request()->routeIs('home') && $exhibitionAd)
-        <aside
-            class="discover-exhibition-ad"
-            data-exhibition-ad
-            data-exhibition-ad-id="{{ $exhibitionAd['id'] }}"
-            aria-label="Online exhibition announcement"
-            hidden
-        >
-            <div class="discover-exhibition-ad-copy">
-                <span>{{ $exhibitionAd['type'] === 'ongoing' ? 'EXHIBITION IS GOING' : 'REGISTRATION OPEN' }}</span>
-                <p>
-                    {{ $exhibitionAd['type'] === 'ongoing' ? 'Explore the exhibition:' : 'Coming soon:' }}
-                    <strong>{{ $exhibitionAd['title'] }}</strong>
-                </p>
-            </div>
-            <a href="{{ route('exhibitions.show', $exhibitionAd['slug']) }}">
-                {{ $exhibitionAd['type'] === 'ongoing' ? 'Visit exhibition' : 'View exhibition' }}
-                <span aria-hidden="true">→</span>
-            </a>
-            <button type="button" data-dismiss-exhibition-ad aria-label="Close exhibition announcement">
-                <span aria-hidden="true">&times;</span>
-            </button>
-        </aside>
+        <div class="discover-exhibition-backdrop" data-exhibition-ad data-exhibition-ad-id="{{ $exhibitionAd['id'] }}" hidden>
+            <section class="discover-exhibition-card" role="dialog" aria-modal="true" aria-labelledby="discoverExhibitionTitle">
+                <button type="button" class="discover-exhibition-close" data-dismiss-exhibition-ad aria-label="Close exhibition announcement">&times;</button>
+                <a class="discover-exhibition-poster" href="{{ route('exhibitions.show', $exhibitionAd['slug']) }}" aria-label="View {{ $exhibitionAd['title'] }} exhibition">
+                    @if ($exhibitionAd['cover_image'])
+                        <img src="{{ asset('storage/' . $exhibitionAd['cover_image']) }}" alt="{{ $exhibitionAd['title'] }} exhibition poster">
+                    @else
+                        <span class="discover-exhibition-poster-fallback">ARTFY<br><strong>{{ $exhibitionAd['title'] }}</strong></span>
+                    @endif
+                </a>
+                <div class="discover-exhibition-copy">
+                    <span class="discover-exhibition-kicker">{{ $exhibitionAd['type'] === 'ongoing' ? 'NOW SHOWING' : 'REGISTRATION OPEN' }}</span>
+                    <h2 id="discoverExhibitionTitle">{{ $exhibitionAd['title'] }}</h2>
+                    @if ($exhibitionAd['subtitle'])<p class="discover-exhibition-subtitle">{{ $exhibitionAd['subtitle'] }}</p>@endif
+                    @if ($exhibitionAd['description'])<p class="discover-exhibition-description">{{ \Illuminate\Support\Str::limit($exhibitionAd['description'], 135) }}</p>@endif
+                    <p class="discover-exhibition-dates">{{ $exhibitionAd['starts_at']->format('M j') }} – {{ $exhibitionAd['ends_at']->format('M j, Y') }}</p>
+                    <a class="discover-exhibition-cta" href="{{ route('exhibitions.show', $exhibitionAd['slug']) }}">Explore exhibition <span aria-hidden="true">→</span></a>
+                    <small>Sign in as an Art Lover on the exhibition page to vote.</small>
+                </div>
+            </section>
+        </div>
         <style>
-            .discover-exhibition-ad{position:relative;display:flex;align-items:center;justify-content:center;gap:24px;padding:12px 56px;background:#414c2c;color:#fff}
-            .discover-exhibition-ad[hidden]{display:none}
-            .discover-exhibition-ad-copy>span{font-size:.7rem;font-weight:700;letter-spacing:.12em;opacity:.8}
-            .discover-exhibition-ad p{margin:3px 0 0}
-            .discover-exhibition-ad>a{color:#fff;font-weight:700;text-decoration:underline;text-underline-offset:3px}
-            .discover-exhibition-ad>button{position:absolute;top:50%;right:16px;display:grid;width:32px;height:32px;place-items:center;transform:translateY(-50%);border:1px solid rgba(255,255,255,.55);border-radius:50%;background:transparent;color:inherit;font-size:1.35rem;line-height:1;cursor:pointer}
-            .discover-exhibition-ad>button:focus-visible,.discover-exhibition-ad>a:focus-visible{outline:2px solid #fff;outline-offset:3px}
-            @media(max-width:600px){.discover-exhibition-ad{align-items:flex-start;flex-direction:column;gap:8px;padding:12px 54px 12px 16px}.discover-exhibition-ad>button{right:12px}}
+            .discover-exhibition-backdrop{position:fixed;z-index:1000;inset:0;display:grid;place-items:center;padding:20px;background:rgba(18,22,15,.62);backdrop-filter:blur(4px)}
+            .discover-exhibition-backdrop[hidden]{display:none}
+            .discover-exhibition-card{position:relative;display:grid;grid-template-columns:minmax(180px,.82fr) minmax(260px,1fr);width:min(650px,100%);overflow:hidden;border:1px solid rgba(190,164,111,.6);background:#f8f6ef;color:#303622;box-shadow:0 24px 80px rgba(0,0,0,.35)}
+            .discover-exhibition-poster{display:grid;min-height:330px;place-items:center;overflow:hidden;background:#303a25}
+            .discover-exhibition-poster img{width:100%;height:100%;min-height:330px;object-fit:cover}
+            .discover-exhibition-poster-fallback{display:grid;width:82%;min-height:270px;align-content:center;gap:18px;padding:20px;border:1px solid #c8a66b;color:#f8f6ef;text-align:center;letter-spacing:.15em}
+            .discover-exhibition-poster-fallback strong{font:400 26px/1.15 Georgia,serif;letter-spacing:0}
+            .discover-exhibition-copy{align-self:center;padding:42px 34px 34px}
+            .discover-exhibition-kicker{color:#687246;font-size:10px;font-weight:800;letter-spacing:.16em}
+            .discover-exhibition-copy h2{margin:12px 0 5px;font:400 clamp(27px,4vw,38px)/1.08 Georgia,serif}
+            .discover-exhibition-subtitle,.discover-exhibition-description{margin:8px 0;color:#626452;line-height:1.55}
+            .discover-exhibition-dates{margin:16px 0;color:#687246;font-size:12px;font-weight:700;letter-spacing:.06em}
+            .discover-exhibition-cta{display:flex;justify-content:space-between;align-items:center;margin-top:20px;padding:13px 16px;background:#414c2c;color:#fff;text-decoration:none;font-weight:700}
+            .discover-exhibition-copy small{display:block;margin-top:12px;color:#777967;font-size:11px;line-height:1.45}
+            .discover-exhibition-close{position:absolute;z-index:1;top:12px;right:12px;display:grid;width:34px;height:34px;place-items:center;border:1px solid rgba(65,76,44,.35);border-radius:50%;background:#f8f6ef;color:#303622;font-size:24px;line-height:1;cursor:pointer}
+            .discover-exhibition-close:focus-visible,.discover-exhibition-cta:focus-visible,.discover-exhibition-poster:focus-visible{outline:3px solid #c8a66b;outline-offset:3px}
+            @media(max-width:560px){.discover-exhibition-card{grid-template-columns:1fr;max-width:390px;max-height:calc(100vh - 32px);overflow:auto}.discover-exhibition-poster{min-height:180px;max-height:220px}.discover-exhibition-poster img{min-height:220px}.discover-exhibition-poster-fallback{min-height:165px}.discover-exhibition-copy{padding:23px 22px 22px}.discover-exhibition-copy h2{margin-top:8px}}
         </style>
         <script>
             (() => {
-                const banner = document.querySelector('[data-exhibition-ad]');
-                if (!banner) return;
-
-                const storageKey = `artfy-dismissed-exhibition-${banner.dataset.exhibitionAdId}`;
-                try {
-                    if (sessionStorage.getItem(storageKey) === '1') return;
-                } catch (error) {
-                    banner.hidden = false;
-                }
-
-                banner.hidden = false;
-                banner.querySelector('[data-dismiss-exhibition-ad]').addEventListener('click', () => {
-                    try {
-                        sessionStorage.setItem(storageKey, '1');
-                    } catch (error) {
-                        // Keep the close button functional when browser storage is unavailable.
-                    }
-                    banner.hidden = true;
-                });
+                const dialog = document.querySelector('[data-exhibition-ad]');
+                if (!dialog) return;
+                const storageKey = `artfy-dismissed-exhibition-${dialog.dataset.exhibitionAdId}`;
+                try { if (sessionStorage.getItem(storageKey) === '1') return; } catch (error) {}
+                dialog.hidden = false;
+                const close = () => {
+                    try { sessionStorage.setItem(storageKey, '1'); } catch (error) {}
+                    dialog.hidden = true;
+                };
+                dialog.querySelector('[data-dismiss-exhibition-ad]').addEventListener('click', close);
+                dialog.addEventListener('click', event => { if (event.target === dialog) close(); });
+                document.addEventListener('keydown', event => { if (event.key === 'Escape' && !dialog.hidden) close(); });
             })();
         </script>
     @endif

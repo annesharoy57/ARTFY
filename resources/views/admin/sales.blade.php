@@ -159,6 +159,15 @@
         font-weight: bold;
     }
 
+    .fulfillment-form { display:grid; gap:7px; min-width:190px; }
+    .fulfillment-form select,.fulfillment-form input { width:100%; padding:8px 9px; border:1px solid var(--border); border-radius:8px; background:#fff; color:var(--text); font-size:11px; }
+    .fulfillment-form button { padding:8px 10px; border:0; border-radius:8px; background:var(--dark-olive); color:#fff; font-size:11px; font-weight:700; cursor:pointer; }
+    .fulfillment-current { display:inline-block; padding:5px 8px; border-radius:20px; background:#f4f0e2; color:#796638; font-size:10px; font-weight:700; }
+    .pending-label { display:inline-block; padding:5px 8px; border-radius:20px; background:#fff3d9; color:#95702e; font-size:10px; font-weight:700; }
+    .pending-check-form { margin-top:9px; }
+    .pending-check-form button { padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:#fff; color:var(--dark-olive); font-size:11px; font-weight:700; cursor:pointer; }
+    .pending-check-form button:hover { background:#f5f4eb; }
+
     .empty-state {
         padding: 45px 20px;
         color: var(--muted);
@@ -201,6 +210,61 @@
         font-size: 11px;
         line-height: 1.7;
     }
+
+    .section-heading {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 36px;
+        font-size: 26px;
+        letter-spacing: -.02em;
+    }
+
+    .section-heading::after {
+        content: '';
+        height: 1px;
+        flex: 1;
+        background: linear-gradient(90deg, var(--border), transparent);
+    }
+
+    .stats-grid { gap: 18px; }
+
+    .stat-card {
+        position: relative;
+        overflow: hidden;
+        padding: 24px;
+        border-radius: 18px;
+        background: linear-gradient(145deg, #fff 55%, #f1f0e5);
+        box-shadow: 0 10px 28px rgba(43, 48, 32, .055);
+        transition: transform .2s ease, box-shadow .2s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 18px 36px rgba(43, 48, 32, .1);
+    }
+
+    .stat-card:nth-child(2) { background: linear-gradient(145deg, #fff 55%, #f5eee2); }
+    .stat-card:nth-child(3) { background: linear-gradient(145deg, #fff 55%, #edf1e6); }
+    .stat-card:nth-child(4) { background: linear-gradient(145deg, #fff 55%, #f5f0df); }
+    .stat-label { font-size: 12px; font-weight: 700; letter-spacing: .035em; }
+    .stat-value { font-size: clamp(20px, 2vw, 29px); letter-spacing: -.025em; }
+
+    .table-card {
+        border-radius: 18px;
+        box-shadow: 0 12px 32px rgba(43, 48, 32, .06);
+    }
+
+    .table-intro { padding: 22px 24px; background: linear-gradient(110deg, #fff, #f7f6ef); }
+    .table-intro h3 { font-family: Georgia, serif; font-size: 20px; font-weight: normal; }
+    .verified-label { border: 1px solid #cde2cf; padding: 8px 13px; }
+    .sales-table th { background: #f3f2e9; }
+    .sales-table td { padding-top: 18px; padding-bottom: 18px; }
+    .sales-table tbody tr { transition: background .15s ease; }
+    .sales-table tbody tr:hover { background: #f7f7f0; }
+    .sale-status { border: 1px solid #cde2cf; }
+
+    @media (prefers-reduced-motion: reduce) { .stat-card { transition: none; } }
 
     @media (max-width: 1150px) {
         .stats-grid {
@@ -299,6 +363,79 @@
     </section>
 
     <section>
+        <h2 class="section-heading">Pending Artwork Payments</h2>
+
+        <div class="table-card">
+            <div class="table-intro">
+                <div>
+                    <h3>Checkouts awaiting confirmation</h3>
+                    <p>Includes exhibition artwork orders. These become sales only after SSLCOMMERZ verifies payment.</p>
+                </div>
+                <span class="pending-label">{{ $pendingSales->total() }} pending</span>
+            </div>
+
+            @if ($pendingSales->count() > 0)
+                <div class="table-scroll">
+                    <table class="sales-table">
+                        <thead>
+                            <tr>
+                                <th>Order</th>
+                                <th>Artwork / Exhibition</th>
+                                <th>Buyer</th>
+                                <th>Artist</th>
+                                <th>Started</th>
+                                <th>Sale Price</th>
+                                <th>Payment</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($pendingSales as $pendingSale)
+                                <tr>
+                                    <td><span class="primary-text">{{ $pendingSale->order_number }}</span></td>
+                                    <td>
+                                        <span class="primary-text">{{ $pendingSale->artwork_title ?: 'Untitled artwork' }}</span>
+                                        @if ($pendingSale->exhibitionApplication?->exhibition)
+                                            <span class="secondary-text">Exhibition: {{ $pendingSale->exhibitionApplication->exhibition->title }}</span>
+                                        @else
+                                            <span class="secondary-text">Uploaded artwork</span>
+                                        @endif
+                                    </td>
+                                    <td>{{ $pendingSale->buyer?->name ?? 'Unknown buyer' }}</td>
+                                    <td>{{ $pendingSale->artist?->name ?? 'Unknown artist' }}</td>
+                                    <td>{{ $pendingSale->created_at?->format('d M Y, h:i A') ?? 'N/A' }}</td>
+                                    <td class="money">BDT {{ number_format((float) $pendingSale->price, 2) }}</td>
+                                    <td>
+                                        <span class="pending-label">{{ ucfirst($pendingSale->payment_status) }}</span>
+                                        @if ($pendingSale->payment_method === 'sslcommerz')
+                                            <form class="pending-check-form" method="POST" action="{{ route('admin.sales.payment-status', $pendingSale) }}">
+                                                @csrf
+                                                <button type="submit">Check payment status</button>
+                                            </form>
+                                        @else
+                                            <span class="secondary-text">{{ ucfirst($pendingSale->payment_method) }} - Manual review</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                <div class="ledger-pagination">
+                    <div class="pagination-info">
+                        Showing {{ $pendingSales->firstItem() ?? 0 }} to {{ $pendingSales->lastItem() ?? 0 }} of {{ $pendingSales->total() }} pending orders
+                    </div>
+                    <div>{{ $pendingSales->links() }}</div>
+                </div>
+            @else
+                <div class="empty-state">
+                    <h3>No pending artwork payments</h3>
+                    <p>New exhibition and uploaded artwork checkouts will appear here until payment is verified.</p>
+                </div>
+            @endif
+        </div>
+    </section>
+
+    <section>
         <h2 class="section-heading">Verified Sales Ledger</h2>
 
         <div class="table-card">
@@ -328,12 +465,16 @@
                                 <th>Sale Price</th>
                                 <th>Commission</th>
                                 <th>Artist Share</th>
-                                <th>Status</th>
+                                <th>Delivery progress</th>
                             </tr>
                         </thead>
 
                         <tbody>
                             @foreach ($sales as $sale)
+                                @php
+                                    $saleArtworkType = $sale->exhibitionApplication?->artwork_type ?? $sale->artwork?->artwork_type ?? 'physical';
+                                    $fulfillmentStatus = $sale->fulfillment_status ?: 'pending';
+                                @endphp
                                 <tr>
                                     <td>
                                         <span class="primary-text">
@@ -398,7 +539,24 @@
                                     </td>
 
                                     <td>
-                                        <span class="sale-status">Verified</span>
+                                        <span class="fulfillment-current">{{ ucfirst(str_replace('_', ' ', $fulfillmentStatus)) }}</span>
+                                        @if ($saleArtworkType === 'physical' && $fulfillmentStatus !== 'delivered')
+                                            <form class="fulfillment-form" method="POST" action="{{ route('admin.sales.fulfillment', $sale) }}">
+                                                @csrf
+                                                @method('PATCH')
+                                                <select name="fulfillment_status" aria-label="Update delivery status">
+                                                    <option value="processing" @selected($fulfillmentStatus === 'processing')>Preparing order</option>
+                                                    <option value="shipped" @selected($fulfillmentStatus === 'shipped')>Shipped</option>
+                                                    <option value="delivered">Delivered</option>
+                                                </select>
+                                                <input name="tracking_number" value="{{ $sale->tracking_number }}" placeholder="Tracking number (optional)" aria-label="Tracking number">
+                                                <button type="submit">Save delivery update</button>
+                                            </form>
+                                        @elseif ($saleArtworkType === 'digital')
+                                            <span class="secondary-text">Digital artwork</span>
+                                        @elseif ($sale->tracking_number)
+                                            <span class="secondary-text">Tracking: {{ $sale->tracking_number }}</span>
+                                        @endif
                                     </td>
                                 </tr>
                             @endforeach
