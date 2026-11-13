@@ -7,6 +7,7 @@ use App\Models\Exhibition;
 use App\Models\ExhibitionApplication;
 use App\Models\ExhibitionSettlement;
 use App\Models\User;
+use App\Notifications\ArtfyDatabaseNotification;
 use DomainException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -160,7 +161,7 @@ class ExhibitionAwardService
 
                 /** @var ExhibitionApplication $application */
                 $application = $award['application'];
-                ArtistWalletTransaction::create([
+                $walletTransaction = ArtistWalletTransaction::create([
                     'user_id' => $application->user_id,
                     'exhibition_id' => $lockedExhibition->id,
                     'exhibition_application_id' => $application->id,
@@ -168,6 +169,28 @@ class ExhibitionAwardService
                     'amount' => $award['amount_cents'] / 100,
                     'description' => 'Online exhibition prize award',
                 ]);
+
+                $artist = User::find($application->user_id);
+                if ($artist) {
+                    $artist->notify(new ArtfyDatabaseNotification(
+                        'artfy.exhibition_prize',
+                        [
+                            'title' => 'Exhibition prize added to your wallet',
+                            'message' => 'You received BDT '
+                                . number_format($award['amount_cents'] / 100, 2)
+                                . ' for your result in "'
+                                . $lockedExhibition->title . '".',
+                            'url' => route(
+                                'artist.wallet',
+                                [],
+                                false
+                            ),
+                            'exhibition_id' => $lockedExhibition->id,
+                            'amount' => $award['amount_cents'] / 100,
+                            'wallet_transaction_id' => $walletTransaction->id,
+                        ]
+                    ));
+                }
             }
 
             return $settlement;

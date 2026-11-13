@@ -23,6 +23,14 @@
         && !empty($item['is_uploaded'])
         && !empty($item['id']);
 
+    $backUrl = $canManage
+        ? match (request()->query('from')) {
+            'artist-studio' => route('artist.studio'),
+            'my-profile' => route('my-profile'),
+            default => route('my-profile'),
+        }
+        : url()->previous();
+
     $title = $item['title'] ?? 'Untitled artwork';
     $artist = $item['artist'] ?? null;
     $description = $item['description'] ?? $description ?? '';
@@ -32,7 +40,7 @@
 <section class="artwork-detail-page">
 
     <div class="artwork-detail-topbar">
-        <a class="artwork-back-link" href="{{ url()->previous() }}">
+        <a class="artwork-back-link" href="{{ $backUrl }}">
             <span aria-hidden="true">←</span>
             <span>Go back</span>
         </a>

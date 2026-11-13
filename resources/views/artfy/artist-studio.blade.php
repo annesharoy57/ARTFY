@@ -66,7 +66,7 @@
 
                                 <a
                                     class="studio-engagement-link"
-                                    href="{{ route('artworks.show', ['slug' => 'uploaded-' . $artwork->id]) }}"
+                                    href="{{ route('artworks.show', ['slug' => 'uploaded-' . $artwork->id, 'from' => 'artist-studio']) }}"
                                 >
                                     View {{ $artwork->likes_count }} likes · {{ $artwork->comments_count }} comments
                                 </a>
@@ -115,7 +115,7 @@
                             @endif
                             <a
                                 class="studio-engagement-link"
-                                href="{{ route('artworks.show', ['slug' => 'uploaded-' . $artwork->id]) }}"
+                                href="{{ route('artworks.show', ['slug' => 'uploaded-' . $artwork->id, 'from' => 'artist-studio']) }}"
                             >
                                 View {{ $artwork->likes_count }} likes · {{ $artwork->comments_count }} comments
                             </a>
@@ -233,5 +233,32 @@
         .studio-page { padding: 28px 16px; }
         .studio-grid { grid-template-columns: 1fr; }
     }
+
+    .studio-page{max-width:1240px;padding:52px 24px 76px;color:#39452f}
+    .studio-heading{position:relative;isolation:isolate;overflow:hidden;margin-bottom:46px;padding:clamp(28px,5vw,58px);border:1px solid rgba(133,143,99,.2);border-radius:28px;background:radial-gradient(ellipse at 78% 20%,rgba(211,197,150,.55),transparent 35%),radial-gradient(ellipse at 14% 100%,rgba(192,208,169,.55),transparent 46%),linear-gradient(130deg,#edf0e3,#f8f5e9 65%,#e7eadc);box-shadow:0 24px 60px rgba(65,76,44,.1),inset 0 1px #fff}
+    .studio-heading::after{position:absolute;z-index:-1;top:-50px;right:7%;width:270px;height:270px;border:1px solid rgba(85,97,58,.13);border-radius:50%;content:"";box-shadow:0 0 0 24px rgba(85,97,58,.035),0 0 0 56px rgba(85,97,58,.025)}
+    .studio-eyebrow{color:#78815d;letter-spacing:.2em}
+    .studio-heading h1{color:#35422d;font:400 clamp(38px,5vw,58px)/1.04 Georgia,serif;letter-spacing:-.04em}
+    .studio-heading>p:not(.studio-eyebrow){max-width:600px;color:#687054;line-height:1.8}
+    .studio-button{border-radius:11px;background:linear-gradient(115deg,#788456,#596b43);box-shadow:0 9px 19px rgba(85,97,58,.18);transition:transform .2s,box-shadow .2s}
+    .studio-button:hover{transform:translateY(-2px);background:linear-gradient(115deg,#697849,#4d603b);box-shadow:0 14px 24px rgba(85,97,58,.24)}
+    .studio-text-link{color:#657249;text-underline-offset:4px}
+    .studio-section{margin:48px 0}
+    .studio-section-heading h2{color:#39452f;font:400 30px/1.15 Georgia,serif}
+    .studio-section-heading span{padding:7px 12px;border:1px solid #e1e1d3;border-radius:999px;background:#fffdf6;color:#71785a;font-size:12px}
+    .studio-grid{gap:25px;perspective:1200px}
+    .studio-artwork{border:1px solid #e3e0d2;border-radius:19px;background:#fffdf7;box-shadow:0 14px 30px rgba(65,76,44,.09);transform-style:preserve-3d;transition:transform .35s,box-shadow .35s}
+    .studio-artwork:hover{transform:translateY(-6px) rotateX(1deg);box-shadow:0 25px 42px rgba(65,76,44,.16)}
+    .studio-artwork>img{height:245px;padding:12px;background:radial-gradient(ellipse at center,#fffefa,#e9eadf);object-fit:contain;transition:transform .45s}
+    .studio-artwork:hover>img{transform:translateZ(18px) scale(1.025)}
+    .studio-artwork-info{padding:19px 20px 21px}
+    .studio-artwork-info h3{color:#39452f;font:400 22px/1.2 Georgia,serif}
+    .studio-artwork-info p{color:#767b64}
+    .studio-artwork-info strong{color:#5b6b42}
+    .studio-engagement-link{color:#657249;text-underline-offset:3px}
+    .studio-empty{border:1px dashed #c7cbb4;border-radius:18px;background:linear-gradient(135deg,#fffdf7,#f0f1e5);box-shadow:inset 0 1px #fff}
+    .studio-empty h3{color:#39452f;font:400 25px Georgia,serif}
+    .studio-empty p{color:#71775b}.studio-empty a{color:#617148}
+    @media(prefers-reduced-motion:reduce){.studio-artwork,.studio-artwork>img,.studio-button{transition:none}}
 </style>
 @endsection

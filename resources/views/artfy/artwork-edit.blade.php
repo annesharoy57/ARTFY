@@ -279,5 +279,15 @@
             padding: 0 16px;
         }
     }
+
+    .artwork-edit-page{max-width:1160px;padding:48px 24px;color:#39452f}
+    .artwork-edit-container{position:relative;max-width:850px;margin:28px auto 0;padding:clamp(24px,5vw,48px);border:1px solid rgba(133,143,99,.24);border-radius:24px;background:radial-gradient(ellipse at 100% 0%,rgba(222,211,176,.38),transparent 32%),linear-gradient(135deg,#fffef9,#f4f2e7);box-shadow:0 25px 60px rgba(65,76,44,.1),inset 0 1px #fff}
+    .artwork-edit-container h1{color:#35422d;font:400 clamp(36px,5vw,52px)/1.05 Georgia,serif;letter-spacing:-.04em}
+    .artwork-edit-container .eyebrow{color:#78815d;letter-spacing:.18em}
+    .edit-intro{color:#71775f;line-height:1.75}
+    .artwork-edit-container label{color:#4b563f}
+    .artwork-edit-container input:not([type=file]),.artwork-edit-container select,.artwork-edit-container textarea{border-color:#d9dacb;border-radius:11px;background:#fffefa}
+    .artwork-edit-container input:focus,.artwork-edit-container select:focus,.artwork-edit-container textarea:focus{outline:0;border-color:#89946a;box-shadow:0 0 0 4px rgba(137,148,106,.15)}
+    .artwork-edit-container button{border-radius:11px;background:linear-gradient(115deg,#788456,#596b43);box-shadow:0 8px 18px rgba(85,97,58,.18)}
 </style>
 @endsection

@@ -43,6 +43,10 @@
         border: 1px solid var(--border);
         border-radius: 14px;
         transition: transform .2s ease, box-shadow .2s ease;
+        position: relative;
+        overflow: hidden;
+        border-radius: 18px;
+        box-shadow: 0 10px 28px rgba(65, 76, 44, .055);
     }
 
     .dashboard-stat-card:hover {
@@ -63,6 +67,9 @@
         line-height: 1.3;
         margin: 15px 0 8px;
         overflow-wrap: anywhere;
+        font-family: Georgia, serif;
+        font-size: clamp(32px, 3vw, 42px);
+        letter-spacing: -.04em;
     }
 
     .dashboard-stat-note {
@@ -89,11 +96,17 @@
         border: 1px solid var(--border);
         border-radius: 14px;
         transition: transform .2s ease, box-shadow .2s ease;
+        position: relative;
+        overflow: hidden;
+        min-height: 245px;
+        border-radius: 18px;
+        box-shadow: 0 10px 28px rgba(65, 76, 44, .045);
     }
 
     .dashboard-management-card:hover {
         transform: translateY(-3px);
-        box-shadow: 0 8px 22px rgba(65, 76, 44, .07);
+        box-shadow: 0 18px 38px rgba(65, 76, 44, .12);
+        border-color: #c9cdbb;
     }
 
     .dashboard-card-icon {
@@ -107,6 +120,8 @@
         background: var(--cream);
         color: var(--olive);
         font-size: 23px;
+        border-radius: 15px;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.8);
     }
 
     .dashboard-management-card h3 {
@@ -143,6 +158,8 @@
         text-decoration: none;
         overflow-wrap: anywhere;
         transition: background .2s ease;
+        border-radius: 999px;
+        padding: 11px 17px;
     }
 
     .dashboard-button:hover {
@@ -206,6 +223,38 @@
 
     .dashboard-footer-note a:hover {
         text-decoration: underline;
+    }
+
+    .dashboard-section-heading {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 38px;
+        font-size: 27px;
+        letter-spacing: -.02em;
+    }
+
+    .dashboard-section-heading::after {
+        content: '';
+        height: 1px;
+        flex: 1;
+        background: linear-gradient(90deg, var(--border), transparent);
+    }
+
+    .dashboard-stats-grid { gap: 18px; }
+    .dashboard-management-grid { gap: 18px; }
+
+    .dashboard-stat-card:nth-child(1) { background: linear-gradient(145deg, #fff 45%, #f0f2e7); }
+    .dashboard-stat-card:nth-child(2) { background: linear-gradient(145deg, #fff 45%, #fff5df); }
+    .dashboard-stat-card:nth-child(3) { background: linear-gradient(145deg, #fff 45%, #f4eee7); }
+    .dashboard-stat-card:nth-child(4) { background: linear-gradient(145deg, #fff 45%, #eaf2e9); }
+
+    .dashboard-management-card h3 { font-size: 21px; letter-spacing: -.01em; }
+    .dashboard-management-card p { font-size: 13px; }
+
+    @media (prefers-reduced-motion: reduce) {
+        .dashboard-stat-card, .dashboard-management-card { transition: none; }
     }
 
     /* Responsive dashboard */
@@ -307,7 +356,7 @@
 
             <article class="dashboard-stat-card">
                 <div class="dashboard-stat-label">
-                    Payments to Verify
+                    Checkouts in Progress
                 </div>
 
                 <div class="dashboard-stat-value">
@@ -315,7 +364,7 @@
                 </div>
 
                 <div class="dashboard-stat-note">
-                    Membership payments awaiting verification
+                    Membership checkouts awaiting SSLCOMMERZ confirmation
                 </div>
             </article>
 
@@ -329,7 +378,7 @@
                 </div>
 
                 <div class="dashboard-stat-note">
-                    Membership payments verified by an administrator
+                    Membership payments confirmed by SSLCOMMERZ
                 </div>
             </article>
 
@@ -371,11 +420,11 @@
             <article class="dashboard-management-card">
                 <div class="dashboard-card-icon" aria-hidden="true">৳</div>
 
-                <h3>Payment Verification</h3>
+                <h3>Membership Payment Ledger</h3>
 
                 <p>
-                    Check submitted transaction IDs and verify payments for
-                    approved memberships.
+                    Review SSLCOMMERZ payment status and see which paid artists
+                    still need a membership decision.
                 </p>
 
                 <a href="{{ route('admin.payments.index') }}"

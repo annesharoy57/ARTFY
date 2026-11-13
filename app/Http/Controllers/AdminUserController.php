@@ -66,6 +66,7 @@ class AdminUserController extends Controller
 
         // Exclude only the specified artwork from this profile preview.
         $artworks = Artwork::where('user_id', $user->id)
+            ->withCount('likes')
             ->whereNot(function ($query) {
                 $query->where('id', 7)
                     ->where('title', 'Velvet Afterglow');

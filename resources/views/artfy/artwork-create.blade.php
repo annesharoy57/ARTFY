@@ -271,6 +271,25 @@
             padding: 20px;
         }
     }
+
+    .upload-page{position:relative;isolation:isolate;display:grid;grid-template-columns:minmax(240px,.82fr) minmax(380px,1.18fr);align-items:start;column-gap:clamp(28px,6vw,74px);max-width:1120px;min-height:680px;padding:52px 24px 72px;color:#39452f}
+    .upload-page::before{position:absolute;z-index:-1;top:165px;left:5%;width:35%;height:390px;border:1px solid rgba(133,143,99,.2);border-radius:190px 190px 24px 24px;background:radial-gradient(ellipse at 50% 24%,rgba(255,255,255,.95),transparent 42%),radial-gradient(ellipse at 50% 100%,rgba(179,192,146,.45),transparent 60%),linear-gradient(155deg,#e4e8d6,#f5f1df);box-shadow:18px 20px 0 -8px rgba(177,163,119,.22),0 28px 55px rgba(65,76,44,.1);content:"";transform:rotate(-3deg)}
+    .upload-page::after{position:absolute;z-index:-1;top:220px;left:11%;width:23%;height:275px;border:1px solid rgba(255,255,255,.84);border-radius:150px 150px 10px 10px;content:"ARTFY\A STUDIO";display:grid;place-items:end center;padding:25px;color:#78815f;font:700 11px/1.7 Arial,sans-serif;letter-spacing:.2em;white-space:pre;background:radial-gradient(ellipse at 50% 38%,rgba(255,255,255,.8),transparent 52%),linear-gradient(150deg,rgba(195,204,174,.75),rgba(222,211,177,.62));box-shadow:0 20px 32px rgba(65,76,44,.12);transform:rotate(4deg)}
+    .upload-back{grid-column:1/-1;margin-bottom:8px;color:#647249}
+    .upload-page h1{grid-column:1;grid-row:2;margin:38px 0 8px;color:#35422d;font:400 clamp(36px,4vw,52px)/1.06 Georgia,serif;letter-spacing:-.035em}
+    .upload-intro{grid-column:1;grid-row:3;max-width:340px;color:#72795f;line-height:1.75}
+    .upload-error{grid-column:1/-1;grid-row:4}
+    .upload-form{grid-column:2;grid-row:2 / span 3;padding:32px;border:1px solid rgba(133,143,99,.24);border-radius:22px;background:rgba(255,254,249,.92);box-shadow:0 26px 64px rgba(65,76,44,.12),inset 0 1px #fff;backdrop-filter:blur(10px)}
+    .upload-form label{color:#4b563f;font-size:13px}
+    .upload-form input:not([type="file"]),.upload-form textarea,.upload-form select{border-color:#d9dacb;border-radius:11px;background:#fffefa;transition:border-color .2s,box-shadow .2s}
+    .upload-form input:focus,.upload-form textarea:focus,.upload-form select:focus{outline:0;border-color:#89946a;box-shadow:0 0 0 4px rgba(137,148,106,.15)}
+    .upload-form input[type="file"]{width:100%;padding:13px;border:1px dashed #b9bea3;border-radius:11px;background:#f7f6ed;color:#65704d}
+    .upload-info{border-color:#e0e0d0;border-radius:13px;background:linear-gradient(125deg,#f7f7ee,#eeefe2);color:#4d5940}
+    .upload-form button{border-radius:11px;background:linear-gradient(115deg,#788456,#596b43);box-shadow:0 8px 18px rgba(85,97,58,.18);transition:transform .2s,box-shadow .2s}
+    .upload-form button:hover{transform:translateY(-2px);background:linear-gradient(115deg,#697849,#4d603b);box-shadow:0 12px 23px rgba(85,97,58,.24)}
+    .upload-note{padding:14px 16px;border-radius:11px;background:#f3f2e8;color:#6d745c}
+    @media(max-width:760px){.upload-page{grid-template-columns:1fr;min-height:0;padding-top:30px}.upload-page::before{top:105px;left:auto;right:6%;width:34%;height:200px;border-radius:100px}.upload-page::after{top:125px;left:auto;right:13%;width:23%;height:155px;padding:13px;font-size:9px}.upload-back,.upload-page h1,.upload-intro,.upload-error,.upload-form{grid-column:1;grid-row:auto}.upload-page h1{max-width:65%;margin:36px 0 8px}.upload-intro{max-width:62%;min-height:54px;margin-bottom:20px}.upload-form{padding:24px}}
+    @media(max-width:480px){.upload-page::before{top:96px;right:4%;width:34%;height:158px}.upload-page::after{top:108px;right:10%;width:24%;height:123px}.upload-page h1{max-width:68%;font-size:35px}.upload-intro{max-width:66%;font-size:13px}.upload-form{padding:19px}}
 </style>
 
 <script>

@@ -24,7 +24,9 @@ class ExhibitionApplication extends Model
         'artwork_title',
         'artwork_description',
         'artwork_price',
+        'artwork_type',
         'artwork_image',
+        'digital_file_path',
     ];
 
     protected function casts(): array

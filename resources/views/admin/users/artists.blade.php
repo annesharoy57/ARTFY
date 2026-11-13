@@ -25,6 +25,13 @@
         background: var(--cream, #efede4);
         border: 1px solid var(--border, #e5e1d7);
         border-radius: 14px;
+        position: relative;
+        overflow: hidden;
+        min-height: 112px;
+        padding: 24px 28px;
+        background: radial-gradient(ellipse at 90% 0%, rgba(199, 174, 121, .2), transparent 36%), linear-gradient(115deg, #fff, #efeee3);
+        border-radius: 18px;
+        box-shadow: 0 12px 30px rgba(65, 76, 44, .055);
     }
 
     .artists-summary-label {
@@ -51,6 +58,7 @@
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(225px, 1fr));
         gap: 22px;
+        gap: 20px;
     }
 
     .artist-directory-card {
@@ -62,6 +70,8 @@
         background: var(--white, #fff);
         border: 1px solid var(--border, #e5e1d7);
         border-radius: 15px;
+        border-radius: 18px;
+        box-shadow: 0 10px 26px rgba(65, 76, 44, .045);
         transition:
             transform .2s ease,
             box-shadow .2s ease,
@@ -71,7 +81,7 @@
     .artist-directory-card:hover {
         transform: translateY(-4px);
         border-color: #c9cdbb;
-        box-shadow: 0 12px 28px rgba(65, 76, 44, .09);
+        box-shadow: 0 18px 36px rgba(65, 76, 44, .13);
     }
 
     .artist-directory-card:focus-visible {
@@ -87,6 +97,7 @@
         height: 220px;
         overflow: hidden;
         background: var(--cream, #efede4);
+        background: linear-gradient(145deg, #e7e8d8, #f5f2e9);
     }
 
     .artist-photo {
@@ -95,7 +106,10 @@
         height: 100%;
         object-fit: cover;
         object-position: center;
+        transition: transform .45s cubic-bezier(.2,.7,.2,1);
     }
+
+    .artist-directory-card:hover .artist-photo { transform: scale(1.045); }
 
     .artist-avatar {
         display: grid;
@@ -183,6 +197,8 @@
         background: var(--white, #fff);
         border: 1px dashed var(--border, #e5e1d7);
         border-radius: 15px;
+        background: linear-gradient(145deg, #fff, #f3f1e9);
+        border-radius: 18px;
     }
 
     .artists-empty-icon {
@@ -231,6 +247,14 @@
         font-size: 12px;
         line-height: 1.7;
     }
+
+    .artists-summary-count { font-size: 36px; letter-spacing: -.03em; }
+    .artists-summary-note { padding: 9px 13px; background: rgba(255,255,255,.62); border: 1px solid rgba(85,97,58,.12); border-radius: 999px; }
+    .artist-card-body { padding: 20px; }
+    .artist-card-name { font-size: 23px; }
+    .artist-status { border-radius: 999px; padding: 7px 12px; }
+
+    @media (prefers-reduced-motion: reduce) { .artist-photo { transition: none; } }
 
     @media (max-width: 640px) {
         .artists-summary {
