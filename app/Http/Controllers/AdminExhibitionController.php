@@ -11,6 +11,7 @@ use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
@@ -64,6 +65,7 @@ class AdminExhibitionController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validatedData($request);
+        $data['cover_image'] = $request->file('cover_image')?->store('exhibitions', 'public');
         $slug = Str::slug($data['title']);
 
         if ($slug === '') {
@@ -90,6 +92,12 @@ class AdminExhibitionController extends Controller
         Exhibition $exhibition
     ): RedirectResponse {
         $data = $this->validatedData($request);
+        $previousCover = $exhibition->cover_image;
+        if ($request->hasFile('cover_image')) {
+            $data['cover_image'] = $request->file('cover_image')->store('exhibitions', 'public');
+        } else {
+            unset($data['cover_image']);
+        }
         $capacityError = DB::transaction(function () use (
             $exhibition,
             $data
@@ -113,9 +121,16 @@ class AdminExhibitionController extends Controller
         });
 
         if ($capacityError !== null) {
+            if (isset($data['cover_image'])) {
+                Storage::disk('public')->delete($data['cover_image']);
+            }
             return back()->withInput()->withErrors([
                 'max_artists' => $capacityError,
             ]);
+        }
+
+        if ($request->hasFile('cover_image') && $previousCover) {
+            Storage::disk('public')->delete($previousCover);
         }
 
         return redirect()->route('admin.exhibitions.index')
@@ -191,9 +206,16 @@ class AdminExhibitionController extends Controller
 
     private function validatedData(Request $request): array
     {
+        $request->merge([
+            'accent_color' => $request->input('accent_color') ?: '#55613a',
+        ]);
+
         return $request->validate([
             'title' => ['required', 'string', 'max:180'],
             'subtitle' => ['nullable', 'string', 'max:220'],
+            'theme' => ['nullable', 'string', 'max:180'],
+            'cover_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'accent_color' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'description' => ['required', 'string', 'max:10000'],
             'registration_opens_at' => ['required', 'date'],
             'registration_closes_at' => [

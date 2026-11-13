@@ -22,7 +22,21 @@
         background: var(--white);
         border: 1px solid var(--border);
         border-radius: 14px;
+        position: relative;
+        overflow: hidden;
+        min-height: 132px;
+        padding: 23px 24px;
+        border-radius: 18px;
+        background: linear-gradient(145deg, #fff 48%, #f0f0e6);
+        box-shadow: 0 10px 28px rgba(65, 76, 44, .05);
+        transition: transform .2s ease, box-shadow .2s ease;
     }
+
+    .report-stat:hover { transform: translateY(-3px); box-shadow: 0 17px 34px rgba(65, 76, 44, .1); }
+
+    .report-stat:nth-child(2), .report-stat:nth-child(5) { background: linear-gradient(145deg, #fff 48%, #fbf2df); }
+    .report-stat:nth-child(3), .report-stat:nth-child(6) { background: linear-gradient(145deg, #fff 48%, #eaf2e9); }
+    .report-stat:nth-child(4) { background: linear-gradient(145deg, #fff 48%, #f6eae6); }
 
     .report-stat-label {
         color: var(--muted);
@@ -36,6 +50,9 @@
         font-size: 30px;
         font-weight: 700;
         line-height: 1.2;
+        font-family: Georgia, serif;
+        font-size: 38px;
+        letter-spacing: -.03em;
     }
 
     .report-section-title {
@@ -44,7 +61,13 @@
         font-family: 'Playfair Display', Georgia, serif;
         font-size: 23px;
         font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 27px;
     }
+
+    .report-section-title::after { content: ''; height: 1px; flex: 1; background: linear-gradient(90deg, var(--border), transparent); }
 
     .report-muted {
         margin: 0 0 16px;
@@ -58,6 +81,8 @@
         background: var(--white);
         border: 1px solid var(--border);
         border-radius: 14px;
+        border-radius: 18px;
+        box-shadow: 0 12px 30px rgba(65, 76, 44, .055);
     }
 
     .report-table {
@@ -82,6 +107,9 @@
         font-weight: 700;
         letter-spacing: .4px;
         white-space: nowrap;
+        padding-top: 16px;
+        padding-bottom: 16px;
+        letter-spacing: .09em;
     }
 
     .report-table tbody tr:last-child td {
@@ -91,6 +119,8 @@
     .report-table tbody tr:hover {
         background: #faf9f5;
     }
+
+    .report-table tbody tr { transition: background .16s ease; }
 
     .report-account-name {
         color: var(--text);
@@ -162,6 +192,12 @@
         color: var(--dark-olive);
         text-decoration: underline;
     }
+
+    .report-table th, .report-table td { padding-left: 19px; padding-right: 19px; }
+    .report-status { border: 1px solid rgba(85,97,58,.08); padding: 7px 11px; }
+    .report-muted { margin-bottom: 18px; }
+
+    @media (prefers-reduced-motion: reduce) { .report-stat { transition: none; } }
 
     @media (max-width: 950px) {
         .report-stats {

@@ -275,6 +275,20 @@
 .ag-artist-hero-decoration::after {
     inset: 55px;
 }
+
+/* EXHIBITIONS HERO: ART GALLERY BACKDROP */
+.ag-exhibition-hero {
+    min-height: 330px;
+    margin-bottom: 30px;
+    background-color: #26301f;
+    background-image: url('https://images.unsplash.com/photo-1764475552765-9f30797d9728?auto=format&fit=crop&w=1800&q=85');
+    background-position: center 48%;
+    background-size: cover;
+}
+.ag-exhibition-hero::before {
+    background: linear-gradient(90deg, rgba(25,31,22,.86), rgba(34,42,28,.63) 58%, rgba(34,42,28,.34));
+}
+.ag-exhibition-hero .ag-hero-copy { width: min(100%, 760px); }
     /* ARTWORK FILTERS */
 
     .ag-filters {
@@ -644,6 +658,88 @@
     align-items: stretch;
 }
 
+.ag-discovery-shelf {
+    margin-top: 38px;
+}
+.ag-discovery-heading {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 17px;
+}
+.ag-discovery-heading p {
+    margin: 0 0 6px;
+    color: var(--muted);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+}
+.ag-discovery-heading h2 {
+    margin: 0;
+    color: var(--dark);
+    font: 400 clamp(27px, 3vw, 36px)/1.12 Georgia, "Times New Roman", serif;
+    letter-spacing: -.025em;
+}
+.ag-discovery-heading a {
+    color: var(--olive);
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.ag-discovery-heading a:hover { text-decoration: underline; text-underline-offset: 4px; }
+.ag-discovery-artworks,
+.ag-discovery-artists {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+}
+.ag-discovery-artists { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ag-discovery-card {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    overflow: hidden;
+    flex-direction: column;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--paper);
+    color: inherit;
+    text-decoration: none;
+    box-shadow: 0 8px 20px rgba(48,58,37,.045);
+    transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.ag-discovery-card-link { display: flex; min-width: 0; flex: 1; flex-direction: column; color: inherit; text-decoration: none; }
+.ag-discovery-save { position: absolute; z-index: 2; top: 10px; right: 10px; }
+.ag-discovery-save.ag-save-button { text-decoration: none; }
+.ag-discovery-card:hover {
+    transform: translateY(-4px);
+    border-color: #c7ceb7;
+    box-shadow: 0 15px 30px rgba(48,58,37,.12);
+}
+.ag-discovery-art-image { height: 220px; overflow: hidden; background: var(--cream); }
+.ag-discovery-art-image img,
+.ag-discovery-artist-image img { width: 100%; height: 100%; object-fit: cover; transition: transform .35s ease; }
+.ag-discovery-card:hover img { transform: scale(1.04); }
+.ag-discovery-card-copy { display: grid; gap: 6px; padding: 14px 15px 16px; }
+.ag-discovery-card-copy strong { overflow: hidden; color: var(--dark); font: 500 20px/1.2 Georgia, "Times New Roman", serif; text-overflow: ellipsis; white-space: nowrap; }
+.ag-discovery-card-copy span,
+.ag-discovery-card-copy small { color: var(--muted); font-size: 12px; line-height: 1.5; }
+.ag-discovery-card-copy small { color: var(--olive); font-weight: 700; }
+.ag-discovery-artist-image { height: 180px; overflow: hidden; background: var(--cream); }
+.ag-discovery-artist-fallback { display: grid; width: 100%; height: 100%; place-items: center; background: radial-gradient(circle at 70% 20%,#fffef9,#e7e9d8 68%,#dce1cd); color: var(--olive); font: 56px Georgia,serif; }
+@media(max-width:900px) {
+    .ag-discovery-artworks { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .ag-discovery-artists { grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+@media(max-width:560px) {
+    .ag-discovery-shelf { margin-top: 28px; }
+    .ag-discovery-artworks,.ag-discovery-artists { grid-template-columns: 1fr; }
+    .ag-discovery-art-image { height: 250px; }
+}
+
 .art-gallery .ag-artist-card {
     display: flex;
     flex-direction: column;
@@ -795,33 +891,63 @@
     .ag-exhibition-grid {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 15px;
+        gap: 18px;
     }
 
     .ag-exhibition-card {
-        display: block;
-        min-height: 190px;
-        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
         border: 1px solid var(--line);
-        border-radius: 11px;
-        background: var(--cream);
-        color: var(--dark);
+        border-radius: 14px;
+        background: #171914;
+        color: #fffef9;
         text-decoration: none;
+        box-shadow: 0 12px 28px rgba(28, 32, 22, .12);
+        transition: transform .25s ease, box-shadow .25s ease;
     }
+
+    .ag-exhibition-card:hover,
+    .ag-exhibition-card:focus-visible { transform: translateY(-4px); box-shadow: 0 18px 32px rgba(28, 32, 22, .18); }
+
+    .ag-exhibition-artwork { position: relative; display: grid; min-height: 270px; place-items: center; overflow: hidden; padding: 14px; background: radial-gradient(ellipse at 50% 35%, color-mix(in srgb, var(--exhibition-accent) 50%, #444), #1e211b 75%); }
+    .ag-exhibition-artwork::after { position: absolute; inset: 10px; border: 1px solid rgba(255,255,255,.13); border-radius: 7px; content: ""; pointer-events: none; }
+    .ag-exhibition-artwork img { display: block; width: 100%; height: 242px; object-fit: contain; filter: drop-shadow(0 12px 16px rgba(0,0,0,.3)); }
+    .ag-exhibition-card .ag-exhibition-status { position: absolute; z-index: 1; top: 20px; left: 20px; padding: 7px 10px; border: 1px solid rgba(255,255,255,.65); border-radius: 99px; background: rgba(20,22,18,.72); color: #fff; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; backdrop-filter: blur(8px); }
+    .ag-exhibition-poster-fallback { display:flex; width:86%; min-height:220px; flex-direction:column; align-items:center; justify-content:center; gap:17px; padding:24px; border:1px solid rgba(255,255,255,.45); background:linear-gradient(145deg, color-mix(in srgb, var(--exhibition-accent) 82%, #171914), #171914); text-align:center; box-shadow:0 15px 30px rgba(0,0,0,.28); }
+    .ag-exhibition-poster-fallback span { color:rgba(255,255,255,.72); font-size:9px; letter-spacing:.18em; }
+    .ag-exhibition-poster-fallback strong { font:400 clamp(22px,2.6vw,32px)/1.1 Georgia,serif; }
+    .ag-exhibition-poster-fallback small { color:rgba(255,255,255,.72); font-size:10px; letter-spacing:.12em; text-transform:uppercase; }
+    .ag-exhibition-card-copy { min-height: 122px; padding: 17px 20px 19px; border-top: 2px solid var(--exhibition-accent); background: linear-gradient(145deg, #282b23, #171914); }
 
     .ag-exhibition-card strong {
         display: block;
-        margin-top: 55px;
         font-family: Georgia, serif;
-        font-size: 23px;
+        font-size: 22px;
         font-weight: 400;
     }
 
     .ag-exhibition-card small {
         display: block;
-        margin-top: 8px;
-        color: var(--muted);
+        margin-top: 10px;
+        color: rgba(255,255,255,.8);
     }
+
+    .ag-exhibition-card em { display:block; margin-top: 7px; color: color-mix(in srgb, var(--exhibition-accent) 58%, white); font-size: 11px; font-style: normal; letter-spacing: .08em; text-transform: uppercase; }
+
+    .ag-exhibition-card{position:relative;overflow:visible;border:1px solid color-mix(in srgb,var(--exhibition-accent) 26%,#34392c);border-radius:20px;background:linear-gradient(145deg,#272b23,#11140f);box-shadow:0 18px 35px rgba(28,32,22,.2),0 5px 10px rgba(28,32,22,.12);transform-style:preserve-3d;perspective:1000px;transition:transform .45s cubic-bezier(.2,.75,.25,1),box-shadow .45s,border-color .3s}
+    .ag-exhibition-card::before{position:absolute;z-index:-1;inset:10px -7px -9px 7px;border:1px solid color-mix(in srgb,var(--exhibition-accent) 32%,transparent);border-radius:20px;content:"";transform:translateZ(-30px);transition:transform .45s}
+    .ag-exhibition-card:hover,.ag-exhibition-card:focus-visible{border-color:color-mix(in srgb,var(--exhibition-accent) 72%,white);box-shadow:0 35px 55px rgba(28,32,22,.28),0 12px 24px rgba(28,32,22,.16);transform:perspective(1000px) translateY(-9px) rotateX(2deg) rotateY(-2deg)}
+    .ag-exhibition-card:hover::before,.ag-exhibition-card:focus-visible::before{transform:translate3d(0,5px,-36px)}
+    .ag-exhibition-artwork{min-height:300px;overflow:hidden;padding:24px;border-radius:19px 19px 0 0;background:radial-gradient(ellipse at 50% 38%,color-mix(in srgb,var(--exhibition-accent) 52%,#92835c),transparent 49%),linear-gradient(145deg,#292e24,#11140f)}
+    .ag-exhibition-artwork::before{position:absolute;inset:20px;border:1px solid rgba(255,255,255,.08);border-radius:50%;content:"";transform:rotate(-18deg) scaleY(.45)}
+    .ag-exhibition-artwork::after{inset:12px;border-color:rgba(255,255,255,.18);border-radius:11px}
+    .ag-exhibition-artwork img{position:relative;z-index:0;width:auto;max-width:78%;height:250px;object-fit:contain;filter:drop-shadow(0 22px 18px rgba(0,0,0,.52));transform:translateZ(34px) rotateY(-6deg) rotateZ(1deg);transition:transform .55s cubic-bezier(.2,.75,.25,1),filter .55s}
+    .ag-exhibition-card:hover .ag-exhibition-artwork img{filter:drop-shadow(0 30px 22px rgba(0,0,0,.55));transform:translate3d(0,-7px,54px) rotateY(-2deg) rotateZ(0)}
+    .ag-exhibition-card .ag-exhibition-status{top:20px;left:20px;border-color:rgba(255,255,255,.34);background:rgba(14,17,13,.64);box-shadow:0 5px 15px rgba(0,0,0,.15)}
+    .ag-exhibition-card-copy{min-height:136px;padding:21px 22px 22px;border-top:1px solid color-mix(in srgb,var(--exhibition-accent) 70%,transparent);border-radius:0 0 19px 19px;background:linear-gradient(145deg,#292e25,#171a15);transform:translateZ(16px)}
+    .ag-exhibition-card-copy strong{font-size:24px}
+    @media(prefers-reduced-motion:reduce){.ag-exhibition-card,.ag-exhibition-card::before,.ag-exhibition-artwork img{transition:none}}
 
     /* EMPTY STATE */
 
@@ -904,6 +1030,8 @@
         .ag-artist-hero {
             min-height: 350px;
         }
+
+        .ag-exhibition-hero { min-height: 350px; }
 
         .ag-artist-hero-decoration {
             right: -110px;
@@ -1006,6 +1134,48 @@
             transition: none !important;
         }
     }
+
+    /* Exhibition gallery: warm paper, moss and dimensional poster displays. */
+    .ag-exhibition-hero{min-height:370px;margin-bottom:34px;border:1px solid rgba(220,211,177,.38);border-radius:28px;background:linear-gradient(90deg,rgba(28,35,23,.78) 0%,rgba(35,43,28,.67) 48%,rgba(35,43,28,.4) 100%),url('https://images.unsplash.com/photo-1643841368618-4aa128ae63c2?auto=format&fit=crop&w=1800&q=85') center 46%/cover no-repeat;color:#f7f4e8;box-shadow:0 26px 65px rgba(38,45,30,.22),inset 0 1px rgba(255,255,255,.18)}
+    .ag-exhibition-hero::before{background:linear-gradient(110deg,rgba(20,26,18,.18),rgba(20,26,18,.03) 66%,rgba(20,26,18,.18))}
+    .ag-exhibition-hero::after{inset:12px;border:1px solid rgba(85,97,58,.15);border-radius:19px}
+    .ag-exhibition-hero .ag-eyebrow{color:#d7c891}
+    .ag-exhibition-hero h1{color:#fffdf5;text-wrap:balance}
+    .ag-exhibition-hero .ag-hero-copy>p{color:rgba(255,253,245,.86)}
+    .ag-exhibition-hero .ag-hero-copy{max-width:720px}
+    .ag-exhibition-hero .ag-hero-copy{z-index:2;max-width:min(76%,820px)}
+    .ag-exhibition-grid{gap:28px;perspective:1400px}
+    .ag-exhibition-card{border-color:#e1ddcd;border-radius:22px;background:#fffdf6;box-shadow:0 18px 34px rgba(65,76,44,.12),0 4px 10px rgba(65,76,44,.06)}
+    .ag-exhibition-card::before{border-color:rgba(137,145,103,.28);border-radius:22px}
+    .ag-exhibition-card:hover,.ag-exhibition-card:focus-visible{border-color:#b4aa81;box-shadow:0 32px 55px rgba(65,76,44,.2),0 12px 22px rgba(65,76,44,.1);transform:perspective(1100px) translateY(-8px) rotateX(2deg) rotateY(-2deg)}
+    .ag-exhibition-artwork{min-height:310px;border-radius:21px 21px 0 0;background:radial-gradient(ellipse at 50% 40%,#f8f2df 0%,#e6e8d8 51%,#d8dfca 100%)}
+    .ag-exhibition-artwork::before{border-color:rgba(89,105,65,.17)}
+    .ag-exhibition-artwork::after{border-color:rgba(85,97,58,.2)}
+    .ag-exhibition-artwork img{max-width:76%;height:255px;filter:drop-shadow(0 19px 14px rgba(61,67,45,.25));transform:translateZ(34px) rotateY(-6deg) rotateZ(1deg)}
+    .ag-exhibition-poster-fallback{border-color:rgba(255,255,255,.8);background:radial-gradient(circle at 80% 18%,rgba(255,255,255,.72),transparent 36%),linear-gradient(145deg,#9aa17a,#62724d);color:#fffdf3;box-shadow:0 18px 30px rgba(65,76,44,.18)}
+    .ag-exhibition-poster-fallback span,.ag-exhibition-poster-fallback small{color:rgba(255,253,243,.78)}
+    .ag-exhibition-card:hover .ag-exhibition-artwork img{filter:drop-shadow(0 28px 18px rgba(61,67,45,.3));transform:translate3d(0,-7px,54px) rotateY(-2deg)}
+    .ag-exhibition-card .ag-exhibition-status{border-color:rgba(85,97,58,.2);background:rgba(255,253,246,.86);color:#4b5b39;box-shadow:0 5px 15px rgba(65,76,44,.08)}
+    .ag-exhibition-card-copy{border-top:1px solid color-mix(in srgb,var(--exhibition-accent) 44%,#e7e2d1);border-radius:0 0 21px 21px;background:linear-gradient(145deg,#fffdf6,#f3f0e5);color:#35422d}
+    .ag-exhibition-card-copy strong{color:#35422d}
+    .ag-exhibition-card-copy small{color:#747a62}
+    .ag-exhibition-card em{color:#79824e}
+    @media(max-width:700px){.ag-exhibition-grid{gap:18px}.ag-exhibition-artwork{min-height:250px}.ag-exhibition-artwork img{height:205px}}
+    .ag-exhibition-shelf{margin:46px 0 58px}
+    .ag-exhibition-shelf-heading{display:flex;align-items:end;justify-content:space-between;gap:16px;margin:0 0 20px;padding-bottom:15px;border-bottom:1px solid #dfddcf}
+    .ag-exhibition-shelf-heading p{margin:0 0 6px;color:#77805d;font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase}
+    .ag-exhibition-shelf-heading h2{margin:0;color:#35422d;font:normal clamp(28px,3.2vw,40px)/1.1 Georgia,serif}
+    .ag-exhibition-shelf-heading small{color:#7c806e;font-size:11px}
+    .ag-exhibition-grid-featured{grid-template-columns:1fr;gap:24px}
+    .ag-exhibition-card.is-ongoing-featured{display:grid;width:calc(100% - 32px);max-width:900px;margin:0 auto;grid-template-columns:44% 56%;min-height:440px}
+    .ag-exhibition-card.is-ongoing-featured .ag-exhibition-artwork{position:relative;min-height:440px;padding:0;border-radius:21px 0 0 21px}
+    .ag-exhibition-card.is-ongoing-featured .ag-exhibition-artwork img{position:absolute;inset:0;width:100%;height:100%;max-width:none;object-fit:cover;object-position:center;filter:none;transform:none}
+    .ag-exhibition-card.is-ongoing-featured .ag-exhibition-card-copy{display:flex;flex-direction:column;justify-content:center;min-height:100%;padding:clamp(24px,3vw,42px);border-top:0;border-left:1px solid #e7e2d1;border-radius:0 21px 21px 0}
+    .ag-exhibition-card.is-ongoing-featured .ag-exhibition-card-copy strong{font-size:clamp(28px,3vw,40px);line-height:1.08}
+    .ag-featured-kicker{margin-bottom:12px;color:#788253;font-size:10px;font-weight:800;letter-spacing:.18em}
+    .ag-exhibition-cta{display:inline-flex;align-items:center;gap:10px;width:max-content;margin-top:25px;padding:12px 16px;border-radius:8px;background:#55613a;color:#fffdf5;font-size:12px;font-weight:700}
+    .ag-exhibition-shelf-past .ag-exhibition-card{opacity:.88}
+    @media(max-width:700px){.ag-exhibition-shelf{margin:34px 0 42px}.ag-exhibition-shelf-heading{align-items:flex-start;flex-direction:column}.ag-exhibition-card.is-ongoing-featured{grid-template-columns:1fr;min-height:0}.ag-exhibition-card.is-ongoing-featured .ag-exhibition-artwork{min-height:320px;border-radius:21px 21px 0 0}.ag-exhibition-card.is-ongoing-featured .ag-exhibition-card-copy{min-height:220px;border-top:1px solid #e7e2d1;border-left:0;border-radius:0 0 21px 21px}}
 </style>
 
 <div class="art-gallery">
@@ -1032,7 +1202,7 @@
             </div>
         </section>
     @else
-        <section class="ag-hero">
+        <section class="ag-hero {{ $pageType === 'exhibitions' ? 'ag-exhibition-hero' : '' }}">
             @if ($pageType === 'artworks')
                 <div class="ag-hero-background" id="agHeroBackground">
                     @forelse ($featuredArtworks as $index => $item)
@@ -1096,6 +1266,64 @@
                 </div>
             @endif
         </section>
+    @endif
+
+    @if ($pageType === 'artworks' && !empty($showDiscoverySections) && $showDiscoverySections)
+        @if (count($topArtworks))
+        <section class="ag-discovery-shelf" aria-labelledby="top-artworks-heading">
+            <div class="ag-discovery-heading">
+                <div><p>Most loved by the community</p><h2 id="top-artworks-heading">Top artworks</h2></div>
+                <a href="#all-artworks">Browse all artworks ↘</a>
+            </div>
+            <div class="ag-discovery-artworks">
+                @foreach ($topArtworks as $item)
+                    @include('artfy.partials.discovery-artwork-card', ['item' => $item])
+                @endforeach
+            </div>
+        </section>
+        @endif
+
+        @if (count($newArtworks))
+        <section class="ag-discovery-shelf" aria-labelledby="new-artworks-heading">
+            <div class="ag-discovery-heading">
+                <div><p>Uploaded in the last 3 days</p><h2 id="new-artworks-heading">New artworks</h2></div>
+                <a href="#all-artworks">See the full collection ↘</a>
+            </div>
+            <div class="ag-discovery-artworks">
+                @foreach ($newArtworks as $item)
+                    @include('artfy.partials.discovery-artwork-card', ['item' => $item])
+                @endforeach
+            </div>
+        </section>
+        @endif
+    @elseif ($pageType === 'artists')
+        @if (count($topArtists))
+        <section class="ag-discovery-shelf" aria-labelledby="top-artists-heading">
+            <div class="ag-discovery-heading">
+                <div><p>Followed by the Artfy community</p><h2 id="top-artists-heading">Top artists</h2></div>
+                <a href="#listing-results">Meet every artist ↘</a>
+            </div>
+            <div class="ag-discovery-artists">
+                @foreach ($topArtists as $item)
+                    @include('artfy.partials.discovery-artist-card', ['item' => $item])
+                @endforeach
+            </div>
+        </section>
+        @endif
+
+        @if (count($newArtists))
+        <section class="ag-discovery-shelf" aria-labelledby="new-artists-heading">
+            <div class="ag-discovery-heading">
+                <div><p>Joined in the last 3 days</p><h2 id="new-artists-heading">New artists</h2></div>
+                <a href="#listing-results">Explore the community ↘</a>
+            </div>
+            <div class="ag-discovery-artists">
+                @foreach ($newArtists as $item)
+                    @include('artfy.partials.discovery-artist-card', ['item' => $item])
+                @endforeach
+            </div>
+        </section>
+        @endif
     @endif
 
     {{-- ARTWORK FILTERS: ONLY SHOWN ON ARTWORKS PAGE --}}
@@ -1409,18 +1637,34 @@
             </div>
 
         @else
-            <div class="ag-exhibition-grid">
-                @foreach ($items as $item)
-                    <a
-                        class="ag-exhibition-card artwork-art {{ $item['color'] ?? 'green' }}"
-                        href="{{ route('exhibitions.show', $item['slug']) }}"
-                    >
-                        <span>Online exhibition</span>
-                        <strong>{{ $item['title'] }}</strong>
-                        <small>{{ $item['subtitle'] ?? '' }}</small>
-                    </a>
-                @endforeach
-            </div>
+            @php
+                $exhibitionGroups = [
+                    ['state' => 'Ongoing', 'eyebrow' => 'Happening now', 'title' => 'Ongoing exhibitions', 'note' => 'Step inside and explore the art on view.', 'class' => 'ag-exhibition-shelf-live', 'featured' => true],
+                    ['state' => 'Upcoming', 'eyebrow' => 'Coming soon', 'title' => 'Upcoming exhibitions', 'note' => 'Get ready for the next collection of stories.', 'class' => 'ag-exhibition-shelf-upcoming', 'featured' => false],
+                    ['state' => 'Recently closed', 'eyebrow' => 'Past collections', 'title' => 'Recently closed', 'note' => 'Revisit exhibitions that have finished.', 'class' => 'ag-exhibition-shelf-past', 'featured' => false],
+                ];
+                $groupedExhibitions = collect($items)->groupBy('exhibition_state');
+            @endphp
+
+            @foreach ($exhibitionGroups as $group)
+                @php($groupItems = $groupedExhibitions->get($group['state'], collect()))
+                @if ($groupItems->isNotEmpty())
+                    <section class="ag-exhibition-shelf {{ $group['class'] }}" aria-labelledby="exhibition-heading-{{ \Illuminate\Support\Str::slug($group['state']) }}">
+                        <div class="ag-exhibition-shelf-heading">
+                            <div>
+                                <p>{{ $group['eyebrow'] }}</p>
+                                <h2 id="exhibition-heading-{{ \Illuminate\Support\Str::slug($group['state']) }}">{{ $group['title'] }}</h2>
+                            </div>
+                            <small>{{ $group['note'] }}</small>
+                        </div>
+                        <div class="ag-exhibition-grid {{ $group['featured'] ? 'ag-exhibition-grid-featured' : '' }}">
+                            @foreach ($groupItems as $item)
+                                @include('artfy.partials.exhibition-card', ['item' => $item, 'featured' => $group['featured']])
+                            @endforeach
+                        </div>
+                    </section>
+                @endif
+            @endforeach
         @endif
     </section>
 </div>

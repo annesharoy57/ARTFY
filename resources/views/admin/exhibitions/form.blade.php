@@ -8,7 +8,18 @@
 @section('page_intro', 'Set the public details, registration window, artist capacity, and fixed BDT registration fee.')
 
 @section('content')
-    <form class="exhibition-form" method="POST" action="{{ $isEditing ? route('admin.exhibitions.update', $exhibition) : route('admin.exhibitions.store') }}">
+    @if ($errors->any())
+        <div class="exhibition-form-errors" role="alert">
+            <strong>The exhibition was not saved. Please fix these fields and submit again:</strong>
+            <ul>
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
+    <form class="exhibition-form" method="POST" enctype="multipart/form-data" action="{{ $isEditing ? route('admin.exhibitions.update', $exhibition) : route('admin.exhibitions.store') }}">
         @csrf
         @if ($isEditing)
             @method('PUT')
@@ -23,6 +34,24 @@
                 @error($name)<small>{{ $message }}</small>@enderror
             </label>
         @endforeach
+
+        <label>Exhibition theme <span class="field-hint">A short curatorial theme, such as “Cartographies of the feminine”.</span>
+            <input type="text" name="theme" maxlength="180" value="{{ old('theme', $exhibition->theme) }}" placeholder="A shared idea behind this collection">
+            @error('theme')<small>{{ $message }}</small>@enderror
+        </label>
+
+        <label>Poster / cover image <span class="field-hint">JPG, PNG, or WebP · up to 5 MB</span>
+            @if ($exhibition->cover_image)
+                <img class="exhibition-cover-preview" src="{{ asset('storage/' . $exhibition->cover_image) }}" alt="Current exhibition cover">
+            @endif
+            <input type="file" name="cover_image" accept="image/jpeg,image/png,image/webp">
+            @error('cover_image')<small>{{ $message }}</small>@enderror
+        </label>
+
+        <label>Accent color <span class="field-hint">Used for the exhibition poster details.</span>
+            <input type="color" name="accent_color" value="{{ old('accent_color', $exhibition->accent_color ?: '#55613a') }}">
+            @error('accent_color')<small>{{ $message }}</small>@enderror
+        </label>
 
         <label>Description
             <textarea name="description" rows="6" required>{{ old('description', $exhibition->description) }}</textarea>
@@ -51,7 +80,7 @@
             @error('registration_fee')<small>{{ $message }}</small>@enderror
         </label>
 
-        <label>Visibility
+        <label>Visibility <span class="field-hint">Drafts are only visible in admin. Choose Published for the exhibition to appear on the public Exhibitions page.</span>
             <select name="status" required>
                 <option value="draft" @selected(old('status', $exhibition->status ?: 'draft') === 'draft')>Draft</option>
                 <option value="published" @selected(old('status', $exhibition->status) === 'published')>Published</option>
@@ -67,10 +96,12 @@
 
     <style>
         .exhibition-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;max-width:900px;padding:22px;border:1px solid var(--border);border-radius:12px;background:#fff}
+        .exhibition-form-errors{max-width:900px;margin:0 0 16px;padding:14px 18px;border:1px solid #e5a9a4;border-radius:9px;background:#fff1ef;color:#842d2a}.exhibition-form-errors ul{margin:8px 0 0;padding-left:20px}
         .exhibition-form label{display:grid;gap:7px;font-size:14px;font-weight:600}
         .exhibition-form label:has(textarea){grid-column:1/-1}
         .exhibition-form input,.exhibition-form textarea,.exhibition-form select{width:100%;padding:11px;border:1px solid var(--border);border-radius:7px;background:#fff;font:inherit}
         .exhibition-form small{color:#922f32;font-weight:400}
+        .exhibition-form .field-hint{color:var(--muted);font-size:12px;font-weight:400}.exhibition-cover-preview{width:100%;max-height:180px;object-fit:cover;border-radius:8px}.exhibition-form input[type=color]{height:46px;padding:5px}
         .exhibition-form-actions{grid-column:1/-1;display:flex;align-items:center;gap:14px}
         .exhibition-form-actions button{padding:12px 16px;border:0;border-radius:7px;background:#414c2c;color:#fff;font-weight:700;cursor:pointer}
         .exhibition-form-actions a{color:var(--olive)}

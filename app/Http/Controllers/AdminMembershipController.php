@@ -87,18 +87,67 @@ class AdminMembershipController extends Controller
             ->sum('artist_amount');
 
         $sales = (clone $verifiedOrders)
-            ->with(['buyer', 'artist'])
+            ->with(['buyer', 'artist', 'artwork', 'exhibitionApplication'])
             ->orderByDesc('verified_at')
             ->orderByDesc('id')
             ->paginate(15);
+
+        $pendingSales = Order::query()
+            ->where('payment_status', 'pending')
+            ->where('order_status', 'pending')
+            ->with([
+                'buyer',
+                'artist',
+                'artwork',
+                'exhibitionApplication.exhibition',
+            ])
+            ->latest('created_at')
+            ->paginate(15, ['*'], 'pending_page');
 
         return view('admin.sales', compact(
             'totalSoldArtworks',
             'totalSalesValue',
             'totalCommissionEarned',
             'totalArtistEarnings',
-            'sales'
+            'sales',
+            'pendingSales'
         ));
+    }
+
+    /** Update the fulfillment progress of a paid physical artwork order. */
+    public function updateOrderFulfillment(Request $request, Order $order)
+    {
+        $this->checkAdmin();
+
+        $validated = $request->validate([
+            'fulfillment_status' => ['required', 'in:processing,shipped,delivered'],
+            'tracking_number' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        $order->load(['artwork', 'exhibitionApplication']);
+        $artworkType = $order->exhibitionApplication?->artwork_type
+            ?? $order->artwork?->artwork_type
+            ?? 'physical';
+
+        abort_unless($order->payment_status === 'verified' && $artworkType === 'physical', 422,
+            'Only paid physical artwork orders can be updated here.');
+
+        $status = $validated['fulfillment_status'];
+        $order->fulfillment_status = $status;
+        $order->order_status = $status;
+        if (filled($validated['tracking_number'] ?? null)) {
+            $order->tracking_number = trim($validated['tracking_number']);
+        }
+        if ($status === 'shipped' && ! $order->shipped_at) {
+            $order->shipped_at = now();
+        }
+        if ($status === 'delivered' && ! $order->delivered_at) {
+            $order->delivered_at = now();
+        }
+        $order->save();
+
+        return redirect()->route('admin.sales.index')
+            ->with('success', 'Order ' . $order->order_number . ' updated to ' . str_replace('_', ' ', $status) . '.');
     }
 
     /**
@@ -116,19 +165,60 @@ class AdminMembershipController extends Controller
     }
 
     /**
-     * Membership payments awaiting completion.
+     * SSLCOMMERZ membership payment ledger and callback statuses.
      */
-    public function payments()
+    public function payments(Request $request)
     {
         $this->checkAdmin();
 
-        $applications = ArtistMembershipApplication::with('user')
-            ->where('status', 'pending')
-            ->where('payment_status', 'pending')
-            ->latest()
-            ->paginate(12);
+        $allowedStatuses = ['all', 'verified', 'pending', 'unpaid'];
+        $filter = $request->query('status', 'all');
 
-        return view('admin.payments', compact('applications'));
+        if (! in_array($filter, $allowedStatuses, true)) {
+            $filter = 'all';
+        }
+
+        $paymentsQuery = ArtistMembershipApplication::query()
+            ->with('user')
+            ->latest('updated_at');
+
+        if ($filter !== 'all') {
+            $paymentsQuery->where('payment_status', $filter);
+        }
+
+        $payments = $paymentsQuery
+            ->paginate(15)
+            ->withQueryString();
+
+        $paymentSummary = [
+            'total' => ArtistMembershipApplication::count(),
+            'verified' => ArtistMembershipApplication::where(
+                'payment_status',
+                'verified'
+            )->count(),
+            'pending' => ArtistMembershipApplication::where(
+                'payment_status',
+                'pending'
+            )->count(),
+            'unpaid' => ArtistMembershipApplication::where(
+                'payment_status',
+                'unpaid'
+            )->count(),
+            'received' => (float) ArtistMembershipApplication::where(
+                'payment_status',
+                'verified'
+            )->sum('membership_fee'),
+            'membershipReview' => ArtistMembershipApplication::where(
+                'payment_status',
+                'verified'
+            )->where('status', 'pending')->count(),
+        ];
+
+        return view('admin.payments', compact(
+            'payments',
+            'paymentSummary',
+            'filter'
+        ));
     }
 
     /**

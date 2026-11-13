@@ -145,6 +145,76 @@
         margin-top: 15px;
     }
 
+    .application {
+        position: relative;
+        overflow: hidden;
+        padding: 25px;
+        margin: 20px 0;
+        border-radius: 18px;
+        box-shadow: 0 12px 32px rgba(43, 48, 32, .055);
+        transition: box-shadow .2s ease, transform .2s ease;
+    }
+
+    .application:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 18px 38px rgba(43, 48, 32, .09);
+    }
+
+    .app-head {
+        align-items: center;
+        padding-bottom: 18px;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .app-head h2 { color: var(--dark-olive); font-size: 26px; }
+    .status { border: 1px solid transparent; padding: 8px 12px; }
+    .status.pending { border-color: #eddfb5; }
+    .status.approved, .status.verified { border-color: #cde2cf; }
+    .status.rejected, .status.unpaid { border-color: #efd0cc; }
+
+    .membership-grid { gap: 12px; }
+    .detail { border-radius: 12px; padding: 16px; }
+    .detail-label { letter-spacing: .11em; }
+
+    .payment-panel {
+        padding: 20px;
+        border-radius: 14px;
+        background: linear-gradient(120deg, #f7f6ee, #f1f0e6);
+    }
+
+    .payment-panel h3, .review-actions h3 {
+        color: var(--dark-olive);
+        font-family: Georgia, serif;
+        font-size: 20px;
+        font-weight: normal;
+    }
+
+    .review-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px 22px;
+    }
+
+    .review-actions > h3, .review-actions > p, .review-actions > .detail { grid-column: 1 / -1; }
+    .review-actions form { min-width: 0; padding: 16px; background: #faf9f5; border: 1px solid var(--border); border-radius: 12px; }
+    .review-actions form + form { margin-top: 0; }
+    .review-textarea { border-radius: 10px; }
+    .review-textarea:focus { outline: 3px solid rgba(85, 97, 58, .16); border-color: var(--olive); }
+
+    .empty {
+        padding: 52px 24px;
+        margin-top: 20px;
+        text-align: center;
+        background: linear-gradient(145deg, #fff, #f1f0e7);
+        border: 1px dashed #d7d8c9;
+        border-radius: 18px;
+    }
+
+    @media (max-width: 760px) {
+        .review-actions { grid-template-columns: 1fr; }
+        .review-actions > h3, .review-actions > p, .review-actions > .detail { grid-column: auto; }
+    }
+
     @media (max-width: 650px) {
         .membership-grid,
         .payment-status-grid {
@@ -278,12 +348,12 @@
                     <div>
                         <div class="detail-label">Payment Method</div>
                         <div class="detail-value">
-                            {{ $application->payment_method ? ucfirst($application->payment_method) : 'Manual' }}
+                            {{ $application->payment_method === 'sslcommerz' ? 'SSLCOMMERZ' : ($application->payment_method ? ucfirst($application->payment_method) : 'Not started') }}
                         </div>
                     </div>
 
                     <div>
-                        <div class="detail-label">Transaction ID</div>
+                        <div class="detail-label">Artfy payment reference</div>
                         <div class="detail-value">
                             {{ $application->payment_reference ?: 'Not submitted' }}
                         </div>
@@ -297,45 +367,20 @@
                     </div>
                 </div>
 
-                @if ($application->payment_verified_at)
+                @if ($application->payment_status === 'verified')
                     <p class="muted">
-                        Verified on
-                        {{ $application->payment_verified_at->format('d M Y, h:i A') }}
+                        SSLCOMMERZ confirmed this payment
+                        @if ($application->payment_verified_at)
+                            on {{ $application->payment_verified_at->format('d M Y, h:i A') }}
+                        @endif
+                        .
                     </p>
-                @endif
-
-                @if ($application->status === 'approved'
-                    && $application->payment_status === 'pending'
-                    && filled($application->payment_reference))
-
-                    <form
-                        method="POST"
-                        action="{{ route('admin.memberships.verify-payment', $application) }}"
-                        onsubmit="return confirm('Have you checked the transaction? Verify this payment now?');"
-                    >
-                        @csrf
-                        <button class="btn primary" type="submit">
-                            Verify Payment
-                        </button>
-                    </form>
-
-                @elseif ($application->payment_status === 'verified')
-
-                    <p class="muted">Payment verified.</p>
-
-                @elseif ($application->status !== 'approved'
-                    && $application->payment_reference)
-
+                @elseif ($application->payment_status === 'pending')
                     <p class="muted">
-                        Approve the membership before verifying its payment.
+                        Checkout started. Artfy will update this status after SSLCOMMERZ confirms the payment.
                     </p>
-
                 @else
-
-                    <p class="muted">
-                        Waiting for a submitted transaction ID.
-                    </p>
-
+                    <p class="muted">No membership payment has been completed yet.</p>
                 @endif
             </div>
 

@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureArtistMembershipActive;
 use App\Http\Middleware\EnsureUserRole;
+use App\Http\Middleware\RestrictPendingArtistAccess;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -34,6 +35,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'artist.active' => EnsureArtistMembershipActive::class,
             'role' => EnsureUserRole::class,
         ]);
+
+        // Keep pending artist accounts in the membership application flow.
+        $middleware->web(append: [RestrictPendingArtistAccess::class]);
 
         /*
          * Exclude payment callback endpoints from CSRF checks.

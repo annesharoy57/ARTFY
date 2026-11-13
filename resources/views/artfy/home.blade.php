@@ -382,17 +382,21 @@
             </a>
         </div>
 
-        @if (!empty($exhibitions) && isset($exhibitions[0]))
+        @if (!empty($exhibitionAd))
             <a
                 class="editorial-exhibition-card artwork-art green"
-                href="{{ route('exhibitions.show', $exhibitions[0]['slug']) }}"
+                href="{{ route('exhibitions.show', $exhibitionAd['slug']) }}"
             >
-                <span class="editorial-exhibition-art"></span>
+                <span class="editorial-exhibition-art" aria-hidden="true">
+                    @if (!empty($exhibitionAd['cover_image']))
+                        <img src="{{ asset('storage/' . ltrim($exhibitionAd['cover_image'], '/')) }}" alt="" loading="lazy" onerror="this.remove()">
+                    @endif
+                </span>
 
                 <span class="editorial-exhibition-content">
-                    <span class="editorial-kicker">ONLINE EXHIBITION</span>
-                    <strong>{{ $exhibitions[0]['title'] }}</strong>
-                    <span>{{ $exhibitions[0]['subtitle'] ?? '' }}</span>
+                    <span class="editorial-kicker">{{ strtoupper($exhibitionAd['type']) }} EXHIBITION</span>
+                    <strong>{{ $exhibitionAd['title'] }}</strong>
+                    <span>{{ $exhibitionAd['subtitle'] ?? '' }}</span>
                     <span class="editorial-exhibition-cta">ENTER EXHIBITION ↗</span>
                 </span>
 

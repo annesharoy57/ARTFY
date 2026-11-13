@@ -18,6 +18,7 @@ use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Throwable;
 
 class ArtworkPurchaseController extends Controller
@@ -45,10 +46,10 @@ class ArtworkPurchaseController extends Controller
             $exhibition = $application->exhibition;
 
             abort_unless($exhibition->status === 'published', 404);
-            abort_if(
-                $exhibition->visitHasEnded(),
+            abort_unless(
+                $exhibition->visitIsOpen(),
                 404,
-                'This exhibition artwork is no longer available for purchase.'
+                'This exhibition artwork is available for purchase only while the exhibition is open.'
             );
             abort_if(
                 $application->orders()
@@ -57,13 +58,19 @@ class ArtworkPurchaseController extends Controller
                 404,
                 'This exhibition artwork has already been sold.'
             );
+            abort_unless(
+                $application->artwork_type !== 'digital'
+                    || filled($application->digital_file_path),
+                404,
+                'The digital PDF for this exhibition artwork is unavailable.'
+            );
 
             $artwork = new Artwork([
                 'title' => $application->artwork_title,
                 'image' => $application->artwork_image,
                 'price' => $application->artwork_price,
                 'user_id' => $application->user_id,
-                'artwork_type' => 'physical',
+                'artwork_type' => $application->artwork_type ?: 'physical',
             ]);
             $artwork->id = $application->id;
             $artwork->setRelation('artist', $application->artist);
@@ -99,6 +106,8 @@ class ArtworkPurchaseController extends Controller
             'exhibition' => $exhibition,
             'artistName' => $artwork->artist?->artistProfile?->artist_name
                 ?: ($artwork->artist?->name ?? 'Artfy Artist'),
+            'isDigitalArtwork' => $isExhibitionArtwork
+                && $artwork->artwork_type === 'digital',
         ]);
     }
 
@@ -128,13 +137,18 @@ class ArtworkPurchaseController extends Controller
         ]);
 
         try {
-            $coordinates = $deliveryService->geocode(
+            $matches = $deliveryService->geocodeCandidates(
                 trim($validated['shipping_address'])
             );
 
+            if ($matches === []) {
+                return response()->json([
+                    'message' => 'No exact result was found. Add the area or district, or click your delivery point directly on the map.',
+                ], 422);
+            }
+
             return response()->json([
-                'lat' => $coordinates['lat'],
-                'lng' => $coordinates['lng'],
+                'results' => $matches,
             ]);
         } catch (Throwable $e) {
             report($e);
@@ -165,6 +179,7 @@ class ArtworkPurchaseController extends Controller
 
         $exhibitionApplicationId = null;
         $isExhibitionArtwork = preg_match('/^exhibition-(\d+)$/', $slug, $matches) === 1;
+        $digitalExhibitionPurchase = false;
 
         if ($isExhibitionArtwork) {
             $exhibitionApplicationId = (int) $matches[1];
@@ -172,11 +187,12 @@ class ArtworkPurchaseController extends Controller
             $application = ExhibitionApplication::query()
                 ->with('exhibition')
                 ->findOrFail($exhibitionApplicationId);
+            $digitalExhibitionPurchase = $application->artwork_type === 'digital';
 
-            abort_if(
-                $application->exhibition->visitHasEnded(),
+            abort_unless(
+                $application->exhibition->visitIsOpen(),
                 409,
-                'This exhibition artwork is no longer available for purchase.'
+                'This exhibition artwork is available for purchase only while the exhibition is open.'
             );
         } else {
             abort_unless(
@@ -204,60 +220,45 @@ class ArtworkPurchaseController extends Controller
             );
         }
 
-        $validated = $request->validate([
-            'shipping_address' => [
-                'required',
-                'string',
-                'min:10',
-                'max:1000',
-            ],
-            'shipping_latitude' => [
-                'required',
-                'numeric',
-                'between:20.5,26.7',
-            ],
-            'shipping_longitude' => [
-                'required',
-                'numeric',
-                'between:88.0,92.8',
-            ],
-        ]);
+        $shippingAddress = null;
+        $delivery = ['distance_km' => 0, 'delivery_fee' => 0];
 
-        $shippingAddress = trim($validated['shipping_address']);
-        $customerLatitude = (float) $validated['shipping_latitude'];
-        $customerLongitude = (float) $validated['shipping_longitude'];
+        if (! $digitalExhibitionPurchase) {
+            $validated = $request->validate([
+                'shipping_address' => ['required', 'string', 'min:10', 'max:1000'],
+                'shipping_latitude' => ['required', 'numeric', 'between:20.5,26.7'],
+                'shipping_longitude' => ['required', 'numeric', 'between:88.0,92.8'],
+            ]);
 
-        if (
-            !is_finite($customerLatitude)
-            || !is_finite($customerLongitude)
-        ) {
-            return back()
-                ->withInput()
-                ->withErrors([
-                    'shipping_address' =>
-                        'The selected map location is invalid. '
-                        . 'Please select your delivery location again.',
+            $shippingAddress = trim($validated['shipping_address']);
+            $customerLatitude = (float) $validated['shipping_latitude'];
+            $customerLongitude = (float) $validated['shipping_longitude'];
+
+            if (! is_finite($customerLatitude) || ! is_finite($customerLongitude)) {
+                return back()->withInput()->withErrors([
+                    'shipping_address' => 'The selected map location is invalid. Please select your delivery location again.',
                 ]);
+            }
         }
 
         /*
          * Artist pickup coordinates remain private.
          */
-        if ($isExhibitionArtwork) {
+        if (! $digitalExhibitionPurchase && $isExhibitionArtwork) {
             $deliveryApplication = ExhibitionApplication::with('artist.artistProfile')
                 ->findOrFail($exhibitionApplicationId);
             $artistProfile = $deliveryApplication->artist?->artistProfile;
-        } else {
+        } elseif (! $digitalExhibitionPurchase) {
             $deliveryArtwork = Artwork::with('artist.artistProfile')
                 ->findOrFail($artworkId);
             $artistProfile = $deliveryArtwork->artist?->artistProfile;
         }
 
-        if (
+        if (! $digitalExhibitionPurchase && (
             !$artistProfile
             || $artistProfile->latitude === null
             || $artistProfile->longitude === null
-        ) {
+        )) {
             return back()
                 ->withInput()
                 ->withErrors([
@@ -270,7 +271,7 @@ class ArtworkPurchaseController extends Controller
         /*
          * Calculate the road distance and delivery fee on the server.
          */
-        try {
+        if (! $digitalExhibitionPurchase) try {
             $delivery = $deliveryService->calculateFromCoordinates(
                 (float) $artistProfile->latitude,
                 (float) $artistProfile->longitude,
@@ -295,7 +296,7 @@ class ArtworkPurchaseController extends Controller
          * Keep delivery pricing server-controlled.
          * This retains the existing minimum of ৳40 and maximum of ৳300.
          */
-        if (
+        if (! $digitalExhibitionPurchase && (
             !isset($delivery['distance_km'], $delivery['delivery_fee'])
             || !is_numeric($delivery['distance_km'])
             || !is_numeric($delivery['delivery_fee'])
@@ -304,7 +305,7 @@ class ArtworkPurchaseController extends Controller
             || (float) $delivery['distance_km'] < 0
             || (float) $delivery['delivery_fee'] < 40
             || (float) $delivery['delivery_fee'] > 300
-        ) {
+        )) {
             return back()
                 ->withInput()
                 ->withErrors([
@@ -323,7 +324,8 @@ class ArtworkPurchaseController extends Controller
                 $exhibitionApplicationId,
                 $isExhibitionArtwork,
                 $shippingAddress,
-                $delivery
+                $delivery,
+                $digitalExhibitionPurchase
             ) {
                 if ($isExhibitionArtwork) {
                     $application = ExhibitionApplication::query()
@@ -338,11 +340,23 @@ class ArtworkPurchaseController extends Controller
                         $application->status === 'confirmed'
                             && $application->payment_status === 'verified'
                             && $exhibition->status === 'published'
-                            && ! $exhibition->visitHasEnded()
+                            && $exhibition->visitIsOpen()
                             && $application->artwork_price !== null
                             && (float) $application->artwork_price > 0,
                         409,
                         'This exhibition artwork is no longer available for purchase.'
+                    );
+
+                    abort_unless(
+                        $application->artwork_type !== 'digital'
+                            || filled($application->digital_file_path),
+                        409,
+                        'The digital PDF for this exhibition artwork is unavailable.'
+                    );
+                    abort_unless(
+                        ($application->artwork_type === 'digital') === $digitalExhibitionPurchase,
+                        409,
+                        'The artwork format changed during checkout. Please start checkout again.'
                     );
 
                     $existingOrder = $application->orders()
@@ -400,7 +414,7 @@ class ArtworkPurchaseController extends Controller
                  * Commission applies to artwork price only.
                  * Delivery is added to the buyer's total, not commission.
                  */
-                $deliveryFee = round(
+                $deliveryFee = $digitalExhibitionPurchase ? 0 : round(
                     (float) $delivery['delivery_fee'],
                     2
                 );
@@ -703,43 +717,6 @@ class ArtworkPurchaseController extends Controller
                 );
             }
 
-            /*
-             * Verify currency and amount before acting on a returned
-             * transaction. Never trust a status for another transaction.
-             */
-            if (
-                strtoupper(
-                    (string) ($transaction['currency_type'] ?? '')
-                ) !== 'BDT'
-            ) {
-                abort(
-                    409,
-                    'The gateway transaction currency could not be verified. '
-                    . 'Please contact Artfy support.'
-                );
-            }
-
-            $gatewayAmount = round(
-                (float) ($transaction['amount'] ?? -1),
-                2
-            );
-
-            $expectedAmount = round(
-                (float) ($order->total_amount ?? $order->price),
-                2
-            );
-
-            if (
-                !is_numeric($transaction['amount'] ?? null)
-                || $gatewayAmount !== $expectedAmount
-            ) {
-                abort(
-                    409,
-                    'The gateway transaction amount does not match your order. '
-                    . 'Please contact Artfy support.'
-                );
-            }
-
             $status = strtoupper(
                 trim((string) ($transaction['status'] ?? ''))
             );
@@ -819,6 +796,44 @@ class ArtworkPurchaseController extends Controller
              true
 
             )) {
+                /*
+                 * Only release an order after a final failure whose
+                 * identity, currency and amount match. Successful orders
+                 * are checked through the validator API above, which has
+                 * the authoritative currency and amount fields.
+                 */
+                $currency = strtoupper((string) (
+                    $transaction['currency_type']
+                    ?? $transaction['currency']
+                    ?? ''
+                ));
+                if ($currency !== 'BDT') {
+                    abort(
+                        409,
+                        'The failed gateway transaction currency could not be verified. '
+                        . 'The order was left unchanged.'
+                    );
+                }
+
+                $gatewayAmount = round(
+                    (float) ($transaction['amount'] ?? -1),
+                    2
+                );
+                $expectedAmount = round(
+                    (float) ($order->total_amount ?? $order->price),
+                    2
+                );
+                if (
+                    ! is_numeric($transaction['amount'] ?? null)
+                    || $gatewayAmount !== $expectedAmount
+                ) {
+                    abort(
+                        409,
+                        'The failed gateway transaction amount does not match this order. '
+                        . 'The order was left unchanged.'
+                    );
+                }
+
                 $this->markPendingOrderFailed(
                     $order->id,
                     'SSLCOMMERZ confirmed a failed or cancelled transaction.'
@@ -930,6 +945,72 @@ class ArtworkPurchaseController extends Controller
         }
     }
 
+    /** Recheck a pending gateway payment from the admin sales ledger. */
+    public function refreshPendingPayment(
+        Request $request,
+        Order $order,
+        SSLCommerzService $sslCommerz
+    ): RedirectResponse {
+        abort_unless($request->user()?->isAdmin(), 403);
+
+        if ($order->payment_status === 'verified') {
+            return redirect()->route('admin.sales.index')->with(
+                'success',
+                'Order ' . $order->order_number . ' is already verified.'
+            );
+        }
+
+        abort_unless(
+            $order->payment_method === 'sslcommerz'
+                && $order->payment_status === 'pending'
+                && $order->order_status === 'pending',
+            422,
+            'Only pending SSLCOMMERZ orders can be checked.'
+        );
+
+        try {
+            $this->resolveExistingPendingOrders(
+                (int) ($order->artwork_id ?? 0),
+                $sslCommerz,
+                $order->exhibition_application_id
+                    ? (int) $order->exhibition_application_id
+                    : null
+            );
+        } catch (Throwable $exception) {
+            if ($exception instanceof HttpExceptionInterface) {
+                $detail = trim($exception->getMessage());
+            } else {
+                report($exception);
+                $detail = 'The gateway status lookup failed. Check the application log for the error.';
+            }
+
+            return redirect()->route('admin.sales.index')->with(
+                'error',
+                'Payment status check for '
+                    . $order->order_number . ': '
+                    . $detail
+                    . ' The order was left unchanged.'
+            );
+        }
+
+        $order->refresh();
+
+        if ($order->payment_status === 'verified') {
+            return redirect()->route('admin.sales.index')->with(
+                'success',
+                'Payment verified. Order ' . $order->order_number
+                    . ' is now recorded as a sale.'
+            );
+        }
+
+        return redirect()->route('admin.sales.index')->with(
+            'error',
+            'SSLCOMMERZ has not confirmed order '
+                . $order->order_number
+                . ' yet. Its payment status was left unchanged.'
+        );
+    }
+
     /**
      * Verify with SSLCOMMERZ before recording a payment.
      * Shared by the browser callback and IPN.
@@ -990,10 +1071,13 @@ class ArtworkPurchaseController extends Controller
             );
         }
 
-        if (
-            strtoupper((string) ($gateway['currency_type'] ?? ''))
-            !== 'BDT'
-        ) {
+        $gatewayCurrency = strtoupper((string) (
+            $gateway['currency_type']
+            ?? $gateway['currency']
+            ?? ''
+        ));
+
+        if ($gatewayCurrency !== 'BDT') {
             throw new RuntimeException(
                 'The gateway transaction currency is not BDT.'
             );
@@ -1106,6 +1190,12 @@ class ArtworkPurchaseController extends Controller
 
                 $lockedOrder->update([
                     'payment_status' => 'verified',
+                    'order_status' => $application->artwork_type === 'digital'
+                        ? 'completed'
+                        : 'processing',
+                    'fulfillment_status' => $application->artwork_type === 'digital'
+                        ? 'completed'
+                        : 'processing',
                     'transaction_id' => $lockedOrder->order_number,
                     'gateway_val_id' => $validationId,
                     'verified_at' => now(),
@@ -1131,6 +1221,12 @@ class ArtworkPurchaseController extends Controller
 
                 $lockedOrder->update([
                     'payment_status' => 'verified',
+                    'order_status' => $artwork->artwork_type === 'digital'
+                        ? 'completed'
+                        : 'processing',
+                    'fulfillment_status' => $artwork->artwork_type === 'digital'
+                        ? 'completed'
+                        : 'processing',
                     'transaction_id' => $lockedOrder->order_number,
                     'gateway_val_id' => $validationId,
                     'verified_at' => now(),
@@ -1312,7 +1408,7 @@ class ArtworkPurchaseController extends Controller
     public function myPurchases(): View
     {
         $orders = Order::with([
-            'artwork',
+            'artwork.artist.artistProfile',
             'exhibitionApplication.exhibition',
         ])
             ->where('buyer_id', auth()->id())
@@ -1339,19 +1435,16 @@ class ArtworkPurchaseController extends Controller
             403
         );
 
-        $artwork = $order->artwork;
-
-        // Only digital artworks with an original file are downloadable.
-        abort_unless(
-            $artwork !== null
-                && $artwork->artwork_type === 'digital'
-                && filled($artwork->digital_file_path),
-            404
-        );
-
         // Original files are stored on Laravel's private local disk.
         $disk = Storage::disk('local');
-        $filePath = $artwork->digital_file_path;
+        $artwork = $order->artwork;
+        $application = $order->exhibitionApplication;
+        $filePath = $artwork?->digital_file_path
+            ?: ($application?->artwork_type === 'digital'
+                ? $application->digital_file_path
+                : null);
+
+        abort_unless(filled($filePath), 404);
 
         abort_unless(
             $disk->exists($filePath),

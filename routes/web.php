@@ -18,6 +18,7 @@ use App\Http\Controllers\ExhibitionVoteController;
 use App\Http\Controllers\CoAdminExhibitionController;
 use App\Http\Controllers\GalleryController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PasswordRecoveryController;
 use Illuminate\Support\Facades\Route;
 
 // ========================================
@@ -66,6 +67,22 @@ Route::get('/login', [AuthController::class, 'showLogin'])
 
 Route::post('/login', [AuthController::class, 'login'])
     ->name('login.submit');
+
+Route::get('/forgot-password', [PasswordRecoveryController::class, 'requestForm'])
+    ->name('password.request');
+Route::post('/forgot-password', [PasswordRecoveryController::class, 'sendCode'])
+    ->middleware('throttle:3,1')
+    ->name('password.email');
+Route::get('/forgot-password/code', [PasswordRecoveryController::class, 'codeForm'])
+    ->name('password.code');
+Route::post('/forgot-password/code', [PasswordRecoveryController::class, 'verifyCode'])
+    ->middleware('throttle:10,1')
+    ->name('password.code.verify');
+Route::get('/reset-password', [PasswordRecoveryController::class, 'resetForm'])
+    ->name('password.reset');
+Route::post('/reset-password', [PasswordRecoveryController::class, 'resetPassword'])
+    ->middleware('throttle:5,1')
+    ->name('password.update');
 
 Route::get('/register', [AuthController::class, 'showRegister'])
     ->name('register');
@@ -260,7 +277,7 @@ Route::middleware('auth')->group(function () {
         'submitArtwork',
     ])->name('exhibitions.submit-artwork');
 
-    Route::middleware('role:art_lover')->post(
+    Route::middleware('role:art_lover,artist')->post(
         '/exhibitions/{exhibition}/applications/{application}/vote',
         [ExhibitionVoteController::class, 'store']
     )->name('exhibitions.vote');
@@ -383,6 +400,16 @@ Route::middleware('auth')->group(function () {
             AdminMembershipController::class,
             'sales',
         ])->name('admin.sales.index');
+
+        Route::post('/admin/sales/{order}/payment-status', [
+            ArtworkPurchaseController::class,
+            'refreshPendingPayment',
+        ])->name('admin.sales.payment-status');
+
+        Route::patch('/admin/sales/{order}/fulfillment', [
+            AdminMembershipController::class,
+            'updateOrderFulfillment',
+        ])->name('admin.sales.fulfillment');
 
         Route::get('/admin/exhibitions', [
             AdminExhibitionController::class,

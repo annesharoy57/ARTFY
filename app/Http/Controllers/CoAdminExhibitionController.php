@@ -35,6 +35,7 @@ class CoAdminExhibitionController extends Controller
         app(ExhibitionAwardService::class)->settleAllClosedExhibitions();
 
         abort_unless($exhibition->status === 'published', 404);
+        abort_unless($exhibition->visitHasStarted(), 404);
 
         $applications = $exhibition->applications()
             ->where('status', 'confirmed')

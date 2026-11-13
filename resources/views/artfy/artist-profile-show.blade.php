@@ -148,6 +148,7 @@
         : strtoupper($firstCharacter);
 
     $totalArtworks = $allArtworks->count();
+    $totalLikes = $allArtworks->sum('likes_count');
     $totalAvailable = $availableArtworks->count();
     $totalSold = $soldArtworks->count();
     $followerCount = $followerCount ?? 0;
@@ -161,12 +162,22 @@
 @push('styles')
     <link
         rel="stylesheet"
-        href="{{ asset('css/artist-public-profile.css') }}?v=20261024-3"
+        href="{{ asset('css/artist-public-profile.css') }}?v=20261112-2"
     >
 @endpush
 
 @section('content')
 <div class="artist-profile-page">
+
+    @if ($isAdminPreview && \Illuminate\Support\Facades\Route::has('admin.artists.index'))
+        <div class="artist-admin-backbar">
+            <a class="artist-admin-back-link" href="{{ route('admin.artists.index') }}">
+                <span aria-hidden="true">&larr;</span>
+                Back to Artists
+            </a>
+            <span class="artist-admin-back-context">ARTIST DIRECTORY</span>
+        </div>
+    @endif
 
     {{-- HERO COVER --}}
     <section class="artist-cover">
@@ -230,15 +241,7 @@
 
         <div class="artist-profile-actions">
             @if ($isAdminPreview)
-                @if (\Illuminate\Support\Facades\Route::has('admin.artists.index'))
-                    <a
-                        class="artist-button artist-button-outline"
-                        href="{{ route('admin.artists.index') }}"
-                    >
-                        ← Back to Artists
-                    </a>
-                @endif
-
+                {{-- Admin return link is placed above the cover. --}}
             @elseif (
                 ($canManageArtistProfile ?? false)
                 && isset($user)
@@ -306,6 +309,26 @@
 
     </section>
 
+    {{-- PROFILE COUNTS --}}
+    <section class="artist-stats" aria-label="Artist profile statistics">
+        <div class="artist-stat">
+            <strong>{{ number_format($totalArtworks) }}</strong>
+            <span>Posts</span>
+        </div>
+
+        <div class="artist-stat">
+            <strong>{{ number_format($totalLikes) }}</strong>
+            <span>Likes</span>
+        </div>
+
+        @if ($userRecord?->isArtist())
+            <div class="artist-stat">
+                <strong>{{ number_format($followerCount) }}</strong>
+                <span>Followers</span>
+            </div>
+        @endif
+    </section>
+
     {{-- ABOUT --}}
     <section class="artist-story">
         <div class="artist-story-heading">
@@ -338,40 +361,6 @@
         </div>
     </section>
 
-    {{-- STATISTICS --}}
-    <section class="artist-stats" aria-label="Artist portfolio statistics">
-        <div class="artist-stat">
-            <span class="artist-stat-icon" aria-hidden="true">✳</span>
-            <strong>{{ $totalArtworks }}</strong>
-            <span>Total Artworks</span>
-        </div>
-
-        @if ($userRecord?->isArtist())
-            <div class="artist-stat">
-                <span class="artist-stat-icon" aria-hidden="true">♡</span>
-                <strong>{{ number_format($followerCount) }}</strong>
-                <span>Followers</span>
-            </div>
-        @endif
-
-        <div class="artist-stat">
-            <span class="artist-stat-icon" aria-hidden="true">◇</span>
-            <strong>{{ $totalAvailable }}</strong>
-            <span>Available</span>
-        </div>
-
-        <div class="artist-stat">
-            <span class="artist-stat-icon" aria-hidden="true">✓</span>
-            <strong>{{ $totalSold }}</strong>
-            <span>Sold</span>
-        </div>
-
-        <div class="artist-stat">
-            <span class="artist-stat-icon" aria-hidden="true">⌁</span>
-            <strong>{{ $otherArtworks->count() }}</strong>
-            <span>Other Status</span>
-        </div>
-    </section>
 
     {{-- PORTFOLIO --}}
     <section class="artist-portfolio" id="artist-portfolio">
@@ -421,7 +410,7 @@
                 @forelse ($availableArtworks as $artwork)
                     <a
                         class="artist-artwork-card"
-                        href="{{ route('artworks.show', ['slug' => 'uploaded-' . $artwork->id]) }}"
+                        href="{{ route('artworks.show', ['slug' => 'uploaded-' . $artwork->id, 'from' => 'my-profile']) }}"
                     >
                         <div class="artist-artwork-image">
                             @if ($imageUrl = $artworkImageUrl($artwork->image ?? null))
@@ -487,7 +476,7 @@
                 @forelse ($soldArtworks as $artwork)
                     <a
                         class="artist-artwork-card artist-artwork-sold"
-                        href="{{ route('artworks.show', ['slug' => 'uploaded-' . $artwork->id]) }}"
+                        href="{{ route('artworks.show', ['slug' => 'uploaded-' . $artwork->id, 'from' => 'my-profile']) }}"
                     >
                         <div class="artist-artwork-image">
                             @if ($imageUrl = $artworkImageUrl($artwork->image ?? null))

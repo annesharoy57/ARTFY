@@ -28,6 +28,7 @@ class ArtistProfileController extends Controller
             $profile = $user->artistProfile;
 
             $artworks = Artwork::where('user_id', $user->id)
+                ->withCount('likes')
                 ->latest()
                 ->get();
 

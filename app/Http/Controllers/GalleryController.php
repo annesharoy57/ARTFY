@@ -69,7 +69,28 @@ class GalleryController extends Controller
             $sort = 'latest';
         }
 
-        $artworks = $this->publicArtworkCollection();
+        $discoveryArtworks = $this->publicArtworkCollection();
+        $highestLikeCount = $discoveryArtworks
+            ? max(array_map(fn (array $artwork): int => (int) ($artwork['likes'] ?? 0), $discoveryArtworks))
+            : 0;
+        $topArtworks = $highestLikeCount > 0
+            ? array_values(array_filter(
+                $discoveryArtworks,
+                fn (array $artwork): bool => (int) ($artwork['likes'] ?? 0) === $highestLikeCount
+            ))
+            : [];
+        $recentSince = now()->subDays(3)->timestamp;
+        $newArtworks = array_slice(array_values(array_filter(
+            $discoveryArtworks,
+            fn (array $artwork): bool => ($artwork['_created_at'] ?? 0) >= $recentSince
+        )), 0, 6);
+        $showDiscoverySections = $query === ''
+            && $artworkFormat === ''
+            && $mediumFilter === ''
+            && $maxPrice === null
+            && $sort === 'latest';
+
+        $artworks = $discoveryArtworks;
 
         $artworks = array_values(array_filter(
             $artworks,
@@ -179,6 +200,9 @@ class GalleryController extends Controller
             'artType' => $mediumFilter,
             'maxPrice' => $maxPriceInput,
             'sort' => $sort,
+            'newArtworks' => $newArtworks,
+            'topArtworks' => $topArtworks,
+            'showDiscoverySections' => $showDiscoverySections,
         ]);
     }
 
@@ -192,18 +216,8 @@ class GalleryController extends Controller
             fn (array $artwork): bool => $artwork['is_saved']
         ));
 
-        return view('artfy.listing', [
-            'title' => 'Your favorites',
-            'eyebrow' => 'A personal collection',
-            'description' => 'The artworks you have saved, all in one place.',
-            'pageType' => 'artworks',
+        return view('artfy.favorites', [
             'items' => $artworks,
-            'query' => '',
-            'artworkFormat' => '',
-            'mediumFilter' => '',
-            'artType' => '',
-            'maxPrice' => '',
-            'sort' => 'latest',
         ]);
     }
 
@@ -307,12 +321,32 @@ class GalleryController extends Controller
      */
     public function artists(): View
     {
+        $artists = $this->artistCollection();
+        $highestFollowerCount = $artists
+            ? max(array_map(fn (array $artist): int => (int) ($artist['follower_count'] ?? 0), $artists))
+            : 0;
+        $topArtists = $highestFollowerCount > 0
+            ? array_values(array_filter(
+                $artists,
+                fn (array $artist): bool => (int) ($artist['follower_count'] ?? 0) === $highestFollowerCount
+            ))
+            : [];
+        $recentSince = now()->subDays(3)->timestamp;
+        $newArtists = array_values(array_filter(
+            $artists,
+            fn (array $artist): bool => ($artist['_created_at'] ?? 0) >= $recentSince
+        ));
+        usort($newArtists, fn (array $a, array $b): int => ($b['_created_at'] ?? 0)
+            <=> ($a['_created_at'] ?? 0));
+
         return view('artfy.listing', [
             'title' => 'Meet the artists',
             'eyebrow' => 'Creative minds',
             'description' => 'Get to know the people behind the art and explore their growing portfolios.',
             'pageType' => 'artists',
-            'items' => $this->artistCollection(),
+            'items' => $artists,
+            'topArtists' => $topArtists,
+            'newArtists' => array_slice($newArtists, 0, 6),
         ]);
     }
 
@@ -450,6 +484,7 @@ class GalleryController extends Controller
             ->findOrFail((int) $matches[1]);
 
         $artworks = Artwork::where('user_id', $artist->id)
+            ->withCount('likes')
             ->whereIn('status', ['available', 'sold'])
             ->where('moderation_status', 'approved')
             ->latest()
@@ -478,7 +513,17 @@ class GalleryController extends Controller
 
         $exhibition = Exhibition::query()
             ->where('status', 'published')
-            ->with([
+            ->where('slug', $slug)
+            ->firstOrFail();
+
+        $visitOpen = $exhibition->visitIsOpen();
+        $adminPreview = auth()->check()
+            && auth()->user()->role === 'admin';
+        $galleryOpen = $exhibition->visitHasStarted() || $adminPreview;
+        $resultsVisible = $exhibition->visitHasEnded();
+
+        if ($galleryOpen) {
+            $exhibition->load([
                 'applications' => fn ($query) => $query
                     ->where('status', 'confirmed')
                     ->with(['artist.artistProfile'])
@@ -488,17 +533,25 @@ class GalleryController extends Controller
                         'votes as voted_by_viewer' => fn ($votes) => $votes
                             ->where('user_id', auth()->id() ?? 0),
                     ])
-                    ->withExists([
-                        'orders as sold' => fn ($orders) => $orders
+                    ->withCount([
+                        'orders as verified_sales_count' => fn ($orders) => $orders
                             ->where('payment_status', 'verified'),
+                        'orders as pending_sales_count' => fn ($orders) => $orders
+                            ->where('payment_status', 'pending')
+                            ->where('order_status', 'pending'),
                     ]),
-            ])
-            ->where('slug', $slug)
-            ->firstOrFail();
+            ]);
 
-        $visitOpen = $exhibition->visitIsOpen();
-        $resultsVisible = $exhibition->visitHasEnded();
-        $applications = $exhibition->applications;
+            $exhibition->applications->each(function ($application): void {
+                $application->sold = (int) $application->verified_sales_count > 0;
+                $application->purchase_pending = ! $application->sold
+                    && (int) $application->pending_sales_count > 0;
+            });
+        }
+
+        $applications = $galleryOpen
+            ? $exhibition->applications
+            : collect();
 
         if ($resultsVisible) {
             $applications = $applications
@@ -560,6 +613,7 @@ class GalleryController extends Controller
             'registrationOpen',
             'registrationWindowOpen',
             'visitOpen',
+            'galleryOpen',
             'resultsVisible'
         ));
     }
@@ -629,6 +683,7 @@ class GalleryController extends Controller
             'artistProfile',
             'artistApplication',
         ])
+            ->withCount('followers')
             ->where('role', 'artist')
             ->whereHas('artistApplication', function ($query) {
                 $query->where('status', 'approved')
@@ -651,6 +706,8 @@ class GalleryController extends Controller
                         ?: 'Discover original artwork by this Artfy artist.',
                     'color' => 'green',
                     'image' => $profile?->profile_photo,
+                    'follower_count' => (int) $artist->followers_count,
+                    '_created_at' => $artist->created_at?->timestamp ?? 0,
                 ];
             })
             ->all();
@@ -672,6 +729,12 @@ class GalleryController extends Controller
                 'title' => $exhibition->title,
                 'subtitle' => $exhibition->subtitle
                     ?: $exhibition->starts_at->format('M j, Y'),
+                'theme' => $exhibition->theme,
+                'cover_image' => $exhibition->cover_image,
+                'accent_color' => $exhibition->accent_color ?: '#55613a',
+                'exhibition_state' => $exhibition->visitIsOpen()
+                    ? 'Ongoing'
+                    : (! $exhibition->visitHasStarted() ? 'Upcoming' : 'Recently closed'),
                 'description' => $exhibition->description,
                 'starts_at' => $exhibition->starts_at,
                 'registration_fee' => $exhibition->registration_fee,
@@ -681,43 +744,42 @@ class GalleryController extends Controller
                 ),
                 'color' => 'green',
             ])
+            ->sortBy(fn (array $item): int => match ($item['exhibition_state']) {
+                'Ongoing' => 0,
+                'Upcoming' => 1,
+                default => 2,
+            })
+            ->values()
             ->all();
     }
 
     private function discoverExhibitionAd(): ?array
     {
-        $exhibitions = Exhibition::query()
+        $exhibition = Exhibition::query()
             ->where('status', 'published')
-            ->withCount([
-                'applications as reserved_artists_count' => fn ($query) => $query
-                    ->reservesArtistPlace(),
-            ])
-            ->orderBy('starts_at')
-            ->get();
-
-        $exhibition = $exhibitions->first(
-            fn (Exhibition $item): bool => $item->visitIsOpen()
-        );
-        $type = 'ongoing';
-
-        if (! $exhibition) {
-            $exhibition = $exhibitions->first(
-                fn (Exhibition $item): bool => ! $item->visitHasStarted()
-                    && $item->registrationIsOpen()
-                    && $item->reserved_artists_count < $item->max_artists
-            );
-            $type = 'upcoming';
-        }
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->first();
 
         if (! $exhibition) {
             return null;
         }
+
+        $type = $exhibition->visitIsOpen()
+            ? 'ongoing'
+            : (! $exhibition->visitHasStarted() ? 'upcoming' : 'recently closed');
 
         return [
             'id' => $exhibition->id,
             'slug' => $exhibition->slug,
             'title' => $exhibition->title,
             'type' => $type,
+            'subtitle' => $exhibition->subtitle
+                ?: $exhibition->starts_at->format('M j, Y'),
+            'description' => $exhibition->description,
+            'cover_image' => $exhibition->cover_image,
+            'starts_at' => $exhibition->starts_at,
+            'ends_at' => $exhibition->ends_at,
         ];
     }
 }

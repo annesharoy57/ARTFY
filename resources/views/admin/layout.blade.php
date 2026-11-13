@@ -550,7 +550,7 @@
                 href="{{ route('admin.payments.index') }}"
                 class="nav-link {{ request()->routeIs('admin.payments.*') ? 'active' : '' }}"
             >
-                ◈ &nbsp; Payment Verification
+                ◈ &nbsp; Membership Payments
             </a>
 
             <div class="nav-label">Community Management</div>
